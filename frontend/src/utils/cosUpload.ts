@@ -42,7 +42,12 @@ export function uploadFile(
         if (err) {
           reject(err)
         } else {
-          resolve(`https://${data.Location}`)
+          const location = data.Location || ''
+          if (location.startsWith('http')) {
+            resolve(location)
+          } else {
+            resolve(`https://${location}`)
+          }
         }
       }
     )

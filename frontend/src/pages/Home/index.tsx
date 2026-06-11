@@ -141,7 +141,7 @@ const Home = () => {
             >
               旅行摄影地图
             </h1>
-            <SearchBox map={null} onSelectPoi={handleSearchSelect} />
+            <SearchBox onSelectPoi={handleSearchSelect} />
           </div>
           <div>
             {isAdmin ? (

@@ -21,34 +21,30 @@
 
 ### 2. 配置环境变量
 
-复制 `.env.example` 为 `.env`，填入您的配置：
-
-```bash
-cp .env.example .env
-```
-
-编辑 `.env` 文件：
+项目已配置好 `.env` 文件，包含以下信息：
 
 ```env
 # 数据库（默认即可）
 DB_USER=photomap
 DB_PASSWORD=photomap123
 
-# 腾讯云 COS（必须配置）
-COS_SECRET_ID=your-cos-secret-id
-COS_SECRET_KEY=your-cos-secret-key
-COS_BUCKET=your-bucket-name
+# 腾讯云 COS
+COS_SECRET_ID=your-tencent-cos-secret-id
+COS_SECRET_KEY=your-tencent-cos-secret-key
+COS_BUCKET=your-cos-bucket
 COS_REGION=ap-guangzhou
-COS_CDN_DOMAIN=https://your-cdn-domain.com
+COS_CDN_DOMAIN=https://your-cos-bucket.cos.ap-guangzhou.myqcloud.com
 
 # JWT（默认即可，生产环境请修改）
-JWT_SECRET=your-jwt-secret
+JWT_SECRET=travel-photo-map-jwt-secret-key-2026-change-me-in-production
 
 # 管理员账号（默认即可）
 ADMIN_USERNAME=admin
-# 默认密码 admin123，如需修改请生成新的 BCrypt hash
+# 默认密码 admin123
 ADMIN_PASSWORD_HASH=$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
 ```
+
+> ⚠️ **安全提醒**：`.env` 文件包含敏感信息，请勿提交到 Git 仓库。已添加到 `.gitignore`。
 
 ### 3. 高德地图 Key（已配置）
 

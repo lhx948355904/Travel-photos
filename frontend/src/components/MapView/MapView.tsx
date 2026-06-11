@@ -31,13 +31,12 @@ const MapView = ({ locations, onMarkerClick, onMapClick, isAdmin }: MapViewProps
   useEffect(() => {
     if (!map || !isReady) return
 
-    markersRef.current.forEach((m) => m.setMap(null))
-    markersRef.current = []
-
     if (clusterRef.current) {
       clusterRef.current.setMap(null)
       clusterRef.current = null
     }
+    markersRef.current.forEach((m) => m.setMap(null))
+    markersRef.current = []
 
     if (locations.length === 0) return
 
@@ -73,7 +72,7 @@ const MapView = ({ locations, onMarkerClick, onMapClick, isAdmin }: MapViewProps
         })
       })
     } else {
-      markers.forEach((marker) => marker.setMap(map))
+      map.add(markers)
     }
 
     if (locations.length > 0) {

@@ -8,7 +8,9 @@ export function getOrientation(width: number, height: number): Orientation {
 
 export function getThumbnailUrl(url: string, size: number = 600): string {
   if (!url) return ''
-  return `${url}?imageMogr2/thumbnail/${size}x/format/webp`
+  // 如果 URL 已经包含查询参数，使用 & 连接
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}imageMogr2/thumbnail/${size}x/format/webp`
 }
 
 export function getMarkerThumbnailUrl(url: string): string {

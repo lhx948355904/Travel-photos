@@ -3,7 +3,6 @@ import { Input } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 
 interface SearchBoxProps {
-  map?: any
   onSelectPoi?: (name: string, lng: number, lat: number) => void
 }
 

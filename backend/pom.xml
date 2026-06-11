@@ -26,6 +26,7 @@
         <jjwt.version>0.12.5</jjwt.version>
         <cos-sts.version>3.1.1</cos-sts.version>
         <cos-java-sdk.version>5.6.213</cos-java-sdk.version>
+        <mybatis-spring.version>3.0.3</mybatis-spring.version>
     </properties>
 
     <dependencies>
@@ -53,6 +54,11 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-boot-starter</artifactId>
             <version>${mybatis-plus.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mybatis</groupId>
+            <artifactId>mybatis-spring</artifactId>
+            <version>${mybatis-spring.version}</version>
         </dependency>
 
         <!-- JWT -->

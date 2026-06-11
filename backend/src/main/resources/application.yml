@@ -36,4 +36,4 @@ jwt:
 
 admin:
   username: ${ADMIN_USERNAME:admin}
-  password-hash: ${ADMIN_PASSWORD_HASH:$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy}
+  password-hash: ${ADMIN_PASSWORD_HASH:$2a$10$wVBjIgQ0CkGN56lVfgaccew7F7/slrqq1mRVszfuIzL3HIZA1JV96}
