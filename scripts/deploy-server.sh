@@ -39,7 +39,27 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   exit 1
 fi
 
-git pull --ff-only
+pull_latest_code() {
+  local max_attempts=3
+  local attempt=1
+
+  while [ "$attempt" -le "$max_attempts" ]; do
+    echo "[deploy] git pull attempt ${attempt}/${max_attempts}"
+    if timeout 90s git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=20 pull --ff-only; then
+      return 0
+    fi
+
+    echo "[deploy] git pull failed; retrying in 5 seconds"
+    attempt=$((attempt + 1))
+    sleep 5
+  done
+
+  echo "[deploy] git pull failed after ${max_attempts} attempts."
+  echo "[deploy] Check GitHub connectivity, or push through a mirror/deploy from a reachable network."
+  return 1
+}
+
+pull_latest_code
 
 mkdir -p backups
 if docker compose ps --status running db 2>/dev/null | grep -q photomap-db; then
