@@ -7,15 +7,18 @@ interface MapViewProps {
   locations: Location[]
   onMarkerClick: (location: Location) => void
   onMapClick?: (lng: number, lat: number) => void
+  focusPosition?: { lng: number; lat: number; name?: string } | null
   isAdmin: boolean
 }
 
-const MapView = ({ locations, onMarkerClick, onMapClick, isAdmin }: MapViewProps) => {
+const MapView = ({ locations, onMarkerClick, onMapClick, focusPosition, isAdmin }: MapViewProps) => {
   const containerId = 'amap-container'
   const { map: mapRef, isReady } = useAmap(containerId)
   const markersRef = useRef<any[]>([])
+  const searchMarkerRef = useRef<any>(null)
   const clusterRef = useRef<any>(null)
   const map = mapRef.current
+  const AMap = (window as any).AMap
 
   const createMarkerContent = useCallback((location: Location) => {
     const thumbUrl = getMarkerThumbnailUrl(location.coverThumbUrl || '')
@@ -41,10 +44,10 @@ const MapView = ({ locations, onMarkerClick, onMapClick, isAdmin }: MapViewProps
     if (locations.length === 0) return
 
     const markers = locations.map((location) => {
-      const marker = new window.AMap.Marker({
+      const marker = new AMap.Marker({
         position: [location.longitude, location.latitude],
         content: createMarkerContent(location),
-        offset: new window.AMap.Pixel(-28, -28),
+        offset: new AMap.Pixel(-28, -28),
         anchor: 'center',
         extData: location,
       })
@@ -59,8 +62,8 @@ const MapView = ({ locations, onMarkerClick, onMapClick, isAdmin }: MapViewProps
     markersRef.current = markers
 
     if (markers.length > 20) {
-      window.AMap.plugin(['AMap.MarkerCluster'], () => {
-        clusterRef.current = new window.AMap.MarkerCluster(map, markers, {
+      AMap.plugin(['AMap.MarkerCluster'], () => {
+        clusterRef.current = new AMap.MarkerCluster(map, markers, {
           gridSize: 60,
           renderClusterMarker: (context: any) => {
             const count = context.count
@@ -76,13 +79,32 @@ const MapView = ({ locations, onMarkerClick, onMapClick, isAdmin }: MapViewProps
     }
 
     if (locations.length > 0) {
-      const bounds = new window.AMap.Bounds()
+      const bounds = new AMap.Bounds()
       locations.forEach((loc) => {
         bounds.extend([loc.longitude, loc.latitude])
       })
       map.setBounds(bounds, [60, 60, 60, 60])
     }
   }, [map, isReady, locations, onMarkerClick, createMarkerContent])
+
+  useEffect(() => {
+    if (!map || !isReady || !focusPosition) return
+
+    const position = [focusPosition.lng, focusPosition.lat]
+    map.setZoomAndCenter(15, position, true)
+
+    if (searchMarkerRef.current) {
+      searchMarkerRef.current.setMap(null)
+    }
+
+    const marker = new AMap.Marker({
+      position,
+      title: focusPosition.name,
+      anchor: 'bottom-center',
+    })
+    marker.setMap(map)
+    searchMarkerRef.current = marker
+  }, [map, isReady, focusPosition])
 
   useEffect(() => {
     if (!map || !isReady || !isAdmin) return
@@ -102,12 +124,10 @@ const MapView = ({ locations, onMarkerClick, onMapClick, isAdmin }: MapViewProps
   return (
     <div
       id={containerId}
+      className="map-surface"
       style={{
         width: '100%',
         height: '100%',
-        borderRadius: 16,
-        overflow: 'hidden',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
       }}
     />
   )

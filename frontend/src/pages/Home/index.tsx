@@ -15,7 +15,7 @@ import UploadPanel from '../../components/UploadPanel'
 import FullscreenGallery from '../../components/FullscreenGallery'
 import { useAuthStore } from '../../store/useAuthStore'
 import { useMapStore } from '../../store/useMapStore'
-import { getLocations, deleteLocation } from '../../api/location'
+import { getLocations, getLocationDetail, deleteLocation } from '../../api/location'
 import type { Location } from '../../types'
 
 const Home = () => {
@@ -28,13 +28,14 @@ const Home = () => {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
   const [clickPosition, setClickPosition] = useState<{ lng: number; lat: number } | null>(null)
   const [searchPoi, setSearchPoi] = useState<{ name: string; lng: number; lat: number } | null>(null)
+  const [focusPosition, setFocusPosition] = useState<{ name: string; lng: number; lat: number } | null>(null)
 
   const fetchLocations = useCallback(async () => {
     try {
       const data = await getLocations()
       setLocations(data)
-    } catch (err) {
-      console.error('Failed to fetch locations', err)
+    } catch (err: any) {
+      message.error(err.message || '地点列表加载失败')
     }
   }, [setLocations])
 
@@ -42,9 +43,14 @@ const Home = () => {
     fetchLocations()
   }, [fetchLocations])
 
-  const handleMarkerClick = useCallback((location: Location) => {
-    setSelectedLocation(location)
-    setGalleryOpen(true)
+  const handleMarkerClick = useCallback(async (location: Location) => {
+    try {
+      const detail = await getLocationDetail(location.id)
+      setSelectedLocation(detail)
+      setGalleryOpen(true)
+    } catch (err: any) {
+      message.error(err.message || '地点详情加载失败')
+    }
   }, [setSelectedLocation])
 
   const handleMapClick = useCallback((lng: number, lat: number) => {
@@ -57,12 +63,9 @@ const Home = () => {
 
   const handleSearchSelect = useCallback((name: string, lng: number, lat: number) => {
     setSearchPoi({ name, lng, lat })
-    if (isAdmin) {
-      setClickPosition({ lng, lat })
-      setEditingLocation(null)
-      setUploadOpen(true)
-    }
-  }, [isAdmin])
+    setClickPosition({ lng, lat })
+    setFocusPosition({ name, lng, lat })
+  }, [])
 
   const handleCloseGallery = () => {
     setGalleryOpen(false)
@@ -70,12 +73,11 @@ const Home = () => {
   }
 
   const handleEditLocation = () => {
-    if (selectedLocation) {
-      setEditingLocation(selectedLocation)
-      setClickPosition({ lng: selectedLocation.longitude, lat: selectedLocation.latitude })
-      setGalleryOpen(false)
-      setUploadOpen(true)
-    }
+    if (!selectedLocation) return
+    setEditingLocation(selectedLocation)
+    setClickPosition({ lng: selectedLocation.longitude, lat: selectedLocation.latitude })
+    setGalleryOpen(false)
+    setUploadOpen(true)
   }
 
   const handleDeleteLocation = async () => {
@@ -99,87 +101,53 @@ const Home = () => {
     setUploadOpen(false)
     setEditingLocation(null)
     setClickPosition(null)
-    setSearchPoi(null)
   }
 
   return (
-    <div style={{ width: '100%', height: '100vh', position: 'relative', overflow: 'hidden' }}>
-      {/* Background carousel */}
+    <div className="home-page">
       <BlurredCarousel locations={locations} />
 
-      {/* Main content */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          width: '100%',
-          height: '100%',
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <h1
-              style={{
-                margin: 0,
-                color: '#fff',
-                fontSize: 24,
-                fontWeight: 600,
-                textShadow: '0 2px 8px rgba(0,0,0,0.3)',
-              }}
-            >
-              旅行摄影地图
-            </h1>
+      <div className="home-content">
+        <div className="home-header">
+          <div className="home-titlebar">
+            <h1>旅行摄影地图</h1>
             <SearchBox onSelectPoi={handleSearchSelect} />
           </div>
-          <div>
-            {isAdmin ? (
-              <Button
-                type="primary"
-                ghost
-                icon={<LogoutOutlined />}
-                onClick={logout}
-                style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}
-              >
-                退出登录
-              </Button>
-            ) : (
-              <Button
-                type="primary"
-                ghost
-                icon={<LoginOutlined />}
-                onClick={() => navigate('/login')}
-                style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}
-              >
-                管理员登录
-              </Button>
-            )}
-          </div>
+
+          {isAdmin ? (
+            <Button
+              type="primary"
+              ghost
+              icon={<LogoutOutlined />}
+              onClick={logout}
+              className="header-action"
+            >
+              退出登录
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              ghost
+              icon={<LoginOutlined />}
+              onClick={() => navigate('/login')}
+              className="header-action"
+            >
+              管理员登录
+            </Button>
+          )}
         </div>
 
-        {/* Map */}
-        <div style={{ flex: 1, minHeight: 0 }}>
+        <div className="map-shell">
           <MapView
             locations={locations}
             onMarkerClick={handleMarkerClick}
             onMapClick={handleMapClick}
+            focusPosition={focusPosition}
             isAdmin={isAdmin}
           />
         </div>
       </div>
 
-      {/* Admin FAB */}
       {isAdmin && (
         <FloatButton.Group trigger="hover" style={{ right: 24, bottom: 24 }}>
           <FloatButton
@@ -187,15 +155,13 @@ const Home = () => {
             tooltip="添加地点"
             onClick={() => {
               setEditingLocation(null)
-              setClickPosition(null)
-              setSearchPoi(null)
+              setClickPosition(searchPoi ? { lng: searchPoi.lng, lat: searchPoi.lat } : null)
               setUploadOpen(true)
             }}
           />
         </FloatButton.Group>
       )}
 
-      {/* Upload Panel */}
       <UploadPanel
         open={uploadOpen}
         onClose={handleCloseUpload}
@@ -206,26 +172,14 @@ const Home = () => {
         onSuccess={handleUploadSuccess}
       />
 
-      {/* Gallery */}
       <FullscreenGallery
         location={selectedLocation}
         open={galleryOpen}
         onClose={handleCloseGallery}
       />
 
-      {/* Gallery admin actions */}
       {galleryOpen && isAdmin && selectedLocation && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 100,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1001,
-            display: 'flex',
-            gap: 12,
-          }}
-        >
+        <div className="gallery-admin-actions">
           <Button type="primary" icon={<EditOutlined />} onClick={handleEditLocation}>
             编辑地点
           </Button>

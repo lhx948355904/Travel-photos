@@ -2,6 +2,7 @@ package com.photomap.service;
 
 import com.photomap.common.BusinessException;
 import com.photomap.config.AdminProperties;
+import com.photomap.config.JwtProperties;
 import com.photomap.dto.LoginRequest;
 import com.photomap.dto.LoginResponse;
 import com.photomap.util.JwtUtil;
@@ -15,6 +16,7 @@ public class AuthService {
 
     private final JwtUtil jwtUtil;
     private final AdminProperties adminProperties;
+    private final JwtProperties jwtProperties;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public LoginResponse login(LoginRequest request) {
@@ -28,6 +30,6 @@ public class AuthService {
         }
 
         String token = jwtUtil.generateToken(request.getUsername());
-        return new LoginResponse(token, 86400L);
+        return new LoginResponse(token, jwtProperties.getExpireSeconds());
     }
 }

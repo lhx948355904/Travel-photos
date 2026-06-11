@@ -1,0 +1,12 @@
+.git
+.env
+backend/target
+frontend/node_modules
+frontend/dist
+frontend/.vite
+pgdata
+backups
+*.log
+logs
+.idea
+.vscode

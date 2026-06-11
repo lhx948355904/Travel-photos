@@ -1,67 +1,77 @@
-import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import type { Location } from '../../types'
 
 interface BlurredCarouselProps {
   locations: Location[]
 }
 
+const ROWS = 5
+const COLS = 8
+const TILE_COUNT = ROWS * COLS
+
 const BlurredCarousel = ({ locations }: BlurredCarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [baseIndex, setBaseIndex] = useState(0)
 
-  const coverUrls = locations
-    .filter((l) => l.coverThumbUrl)
-    .map((l) => l.coverThumbUrl!)
+  const coverUrls = useMemo(
+    () => locations.filter((l) => l.coverThumbUrl).map((l) => l.coverThumbUrl!),
+    [locations]
+  )
+
+  useEffect(() => {
+    setCurrentIndex(0)
+    setBaseIndex(0)
+  }, [coverUrls.length])
 
   useEffect(() => {
     if (coverUrls.length <= 1) return
-    const timer = setInterval(() => {
+    const timer = window.setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % coverUrls.length)
-    }, 6000)
-    return () => clearInterval(timer)
+    }, 6500)
+    return () => window.clearInterval(timer)
   }, [coverUrls.length])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setBaseIndex(currentIndex)
+    }, 1800)
+    return () => window.clearTimeout(timer)
+  }, [currentIndex])
+
   if (coverUrls.length === 0) {
-    return (
-      <div
-        className="blurred-carousel"
-        style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' }}
-      />
-    )
+    return <div className="blurred-carousel empty" />
   }
+
+  const baseUrl = coverUrls[baseIndex] || coverUrls[0]
+  const nextUrl = coverUrls[currentIndex] || coverUrls[0]
 
   return (
     <div className="blurred-carousel">
-      <AnimatePresence mode="sync">
-        <motion.img
-          key={currentIndex}
-          src={coverUrls[currentIndex]}
-          alt=""
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1.05 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.2, ease: 'easeInOut' }}
-          style={{
-            position: 'absolute',
-            top: '-5%',
-            left: '-5%',
-            width: '110%',
-            height: '110%',
-            objectFit: 'cover',
-          }}
-        />
-      </AnimatePresence>
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.45)',
-          backdropFilter: 'blur(30px)',
-        }}
-      />
+      <div className="carousel-base" style={{ backgroundImage: `url(${baseUrl})` }} />
+      <div className="carousel-tile-grid" aria-hidden="true">
+        {Array.from({ length: TILE_COUNT }).map((_, index) => {
+          const row = Math.floor(index / COLS)
+          const col = index % COLS
+          const delay = (row + col) * 0.045
+
+          return (
+            <motion.div
+              key={`${currentIndex}-${index}`}
+              className="carousel-tile"
+              initial={{ opacity: 0, scale: 0.92, filter: 'blur(12px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              transition={{ duration: 0.85, delay, ease: 'easeOut' }}
+              style={{
+                backgroundImage: `url(${nextUrl})`,
+                backgroundSize: `${COLS * 100}% ${ROWS * 100}%`,
+                backgroundPosition: `${(col / (COLS - 1)) * 100}% ${(row / (ROWS - 1)) * 100}%`,
+              }}
+            />
+          )
+        })}
+      </div>
+      <div className="carousel-vignette" />
     </div>
   )
 }

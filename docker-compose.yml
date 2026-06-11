@@ -4,6 +4,7 @@ services:
   db:
     image: postgis/postgis:15-3.4
     container_name: photomap-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: photomap
       POSTGRES_USER: ${DB_USER:-photomap}
@@ -12,7 +13,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-photomap} -d photomap"]
       interval: 5s
@@ -22,12 +23,15 @@ services:
   backend:
     build: ./backend
     container_name: photomap-backend
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     env_file:
       - .env
     environment:
+      DB_URL: jdbc:postgresql://db:5432/photomap
+      DB_DRIVER: org.postgresql.Driver
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: photomap
@@ -37,11 +41,18 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-/api}
+        VITE_AMAP_KEY: ${VITE_AMAP_KEY:-}
+        VITE_AMAP_SECURITY_CODE: ${VITE_AMAP_SECURITY_CODE:-}
     container_name: photomap-frontend
+    restart: unless-stopped
     depends_on:
       - backend
     ports:

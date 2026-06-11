@@ -3,6 +3,8 @@
 
 # Database data
 pgdata/
+backend/data/
+backups/
 
 # Backend
 backend/target/

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Modal,
   Upload,
@@ -44,6 +44,22 @@ interface UploadItem {
   percent?: number
 }
 
+const readImageMeta = (file: File): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve({ width: img.width, height: img.height })
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve({ width: 0, height: 0 })
+    }
+    img.src = objectUrl
+  })
+}
+
 const UploadPanel = ({
   open,
   onClose,
@@ -57,22 +73,46 @@ const UploadPanel = ({
   const { readExif } = useExif()
   const [uploadItems, setUploadItems] = useState<UploadItem[]>([])
   const [coverIndex, setCoverIndex] = useState(0)
+  const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+
+    if (editingLocation) {
+      form.setFieldsValue({
+        name: editingLocation.name,
+        longitude: editingLocation.longitude,
+        latitude: editingLocation.latitude,
+        travelDate: editingLocation.travelDate ? dayjs(editingLocation.travelDate) : undefined,
+        description: editingLocation.description,
+      })
+      return
+    }
+
+    form.setFieldsValue({
+      name: initialName,
+      longitude: initialLng,
+      latitude: initialLat,
+      travelDate: undefined,
+      description: undefined,
+    })
+  }, [editingLocation, form, initialLat, initialLng, initialName, open])
 
   const beforeUpload = async (file: File) => {
     const isImage = file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.heic')
     if (!isImage) {
       message.error('只能上传图片文件')
-      return false
+      return Upload.LIST_IGNORE
     }
+
     const isLt20M = file.size / 1024 / 1024 < 20
     if (!isLt20M) {
       message.error('图片大小不能超过 20MB')
-      return false
+      return Upload.LIST_IGNORE
     }
 
     const exifData = await readExif(file)
-
     setUploadItems((prev) => [
       ...prev,
       {
@@ -96,56 +136,67 @@ const UploadPanel = ({
     return false
   }
 
-  const handleUploadAll = async () => {
-    if (uploadItems.length === 0) return
+  const uploadPendingItems = async (items: UploadItem[]) => {
+    const pendingCount = items.filter((item) => !item.url).length
+    if (pendingCount === 0) return items
 
-    try {
-      const cred = await getCosCredential()
+    const cred = await getCosCredential()
+    const nextItems = [...items]
 
-      const newItems = [...uploadItems]
+    for (let i = 0; i < nextItems.length; i++) {
+      const item = nextItems[i]
+      if (item.url) continue
 
-      for (let i = 0; i < newItems.length; i++) {
-        const item = newItems[i]
-        if (item.url) continue
+      nextItems[i] = { ...item, uploading: true, percent: 0 }
+      setUploadItems([...nextItems])
 
-        newItems[i] = { ...item, uploading: true, percent: 0 }
-        setUploadItems([...newItems])
+      const ext = item.file.name.split('.').pop() || 'jpg'
+      const key = `${cred.allowPrefix.replace('/*', '')}/${Date.now()}_${i}.${ext}`
 
-        const ext = item.file.name.split('.').pop() || 'jpg'
-        const key = `${cred.allowPrefix.replace('/*', '')}/${Date.now()}_${i}.${ext}`
+      try {
+        const url = await uploadFile(cred, item.file, key, (percent) => {
+          nextItems[i] = { ...nextItems[i], percent }
+          setUploadItems([...nextItems])
+        })
+        const meta = await readImageMeta(item.file)
 
-        try {
-          const url = await uploadFile(cred, item.file, key, (percent) => {
-            newItems[i] = { ...newItems[i], percent }
-            setUploadItems([...newItems])
-          })
-
-          const img = new Image()
-          img.src = URL.createObjectURL(item.file)
-          await new Promise<void>((resolve) => {
-            img.onload = () => {
-              newItems[i] = {
-                ...newItems[i],
-                url,
-                thumbUrl: getThumbnailUrl(url, 600),
-                cosKey: key,
-                width: img.width,
-                height: img.height,
-                orientation: getOrientation(img.width, img.height),
-                uploading: false,
-              }
-              resolve()
-            }
-          })
-        } catch (err) {
-          message.error(`上传失败: ${item.file.name}`)
-          newItems[i] = { ...newItems[i], uploading: false }
+        nextItems[i] = {
+          ...nextItems[i],
+          url,
+          thumbUrl: getThumbnailUrl(url, 600),
+          cosKey: key,
+          width: meta.width,
+          height: meta.height,
+          orientation: getOrientation(meta.width, meta.height),
+          uploading: false,
+          percent: 100,
         }
+        setUploadItems([...nextItems])
+      } catch (err: any) {
+        nextItems[i] = { ...nextItems[i], uploading: false }
+        setUploadItems([...nextItems])
+        throw new Error(err.message || `上传失败：${item.file.name}`)
       }
+    }
 
-      setUploadItems([...newItems])
+    return nextItems
+  }
+
+  const handleUploadAll = async () => {
+    if (uploadItems.length === 0) {
+      message.warning('请先选择照片')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const nextItems = await uploadPendingItems(uploadItems)
+      setUploadItems(nextItems)
+      message.success('上传完成')
     } catch (err: any) {
-      message.error('获取上传凭证失败')
+      message.error(err.message || '上传失败')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -160,43 +211,45 @@ const UploadPanel = ({
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
-    const uploadedItems = uploadItems.filter((item) => item.url)
-
-    if (uploadedItems.length === 0 && !editingLocation) {
-      message.error('请至少上传一张照片')
-      return
-    }
 
     setSubmitting(true)
     try {
-      const photos: PhotoUploadInfo[] = uploadedItems.map((item) => ({
-        cosKey: item.cosKey!,
-        url: item.url!,
-        thumbUrl: item.thumbUrl!,
-        width: item.width!,
-        height: item.height!,
-        orientation: item.orientation as any,
-        fileSize: item.fileSize!,
-        shotDate: item.shotDate,
-      }))
+      const uploadedItems = await uploadPendingItems(uploadItems)
+      const photos = uploadedItems
+        .filter((item) => item.url)
+        .map<PhotoUploadInfo>((item) => ({
+          cosKey: item.cosKey!,
+          url: item.url!,
+          thumbUrl: item.thumbUrl!,
+          width: item.width || 0,
+          height: item.height || 0,
+          orientation: item.orientation as any,
+          fileSize: item.fileSize!,
+          shotDate: item.shotDate,
+        }))
+
+      if (photos.length === 0 && !editingLocation) {
+        message.error('请至少上传一张照片')
+        return
+      }
+
+      const payload = {
+        name: values.name,
+        description: values.description,
+        longitude: Number(values.longitude),
+        latitude: Number(values.latitude),
+        travelDate: values.travelDate?.format('YYYY-MM-DD'),
+      }
 
       if (editingLocation) {
         if (photos.length > 0) {
           await addPhotos(editingLocation.id, photos)
         }
-        await updateLocation(editingLocation.id, {
-          name: values.name,
-          description: values.description,
-          travelDate: values.travelDate?.format('YYYY-MM-DD'),
-        })
+        await updateLocation(editingLocation.id, payload)
         message.success('更新成功')
       } else {
         await createLocation({
-          name: values.name,
-          description: values.description,
-          longitude: values.longitude,
-          latitude: values.latitude,
-          travelDate: values.travelDate?.format('YYYY-MM-DD'),
+          ...payload,
           coverIndex,
           photos,
         })
@@ -216,6 +269,7 @@ const UploadPanel = ({
     form.resetFields()
     setUploadItems([])
     setCoverIndex(0)
+    setUploading(false)
     onClose()
   }
 
@@ -225,6 +279,8 @@ const UploadPanel = ({
     multiple: true,
     accept: 'image/*,.heic',
   }
+
+  const hasPendingFiles = uploadItems.some((item) => !item.url)
 
   return (
     <Modal
@@ -246,19 +302,19 @@ const UploadPanel = ({
         </Button>,
       ]}
     >
-      <Form form={form} layout="vertical" initialValues={{ longitude: initialLng, latitude: initialLat, name: initialName }}>
-        <Form.Item name="name" label="地点名称" rules={[{ required: true }]}>
+      <Form form={form} layout="vertical">
+        <Form.Item name="name" label="地点名称" rules={[{ required: true, message: '请输入地点名称' }]}>
           <Input placeholder="请输入地点名称" />
         </Form.Item>
 
         <Row gutter={16}>
           <Col span={12}>
-            <Form.Item name="longitude" label="经度" rules={[{ required: true }]}>
+            <Form.Item name="longitude" label="经度" rules={[{ required: true, message: '请输入经度' }]}>
               <Input type="number" placeholder="经度" />
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="latitude" label="纬度" rules={[{ required: true }]}>
+            <Form.Item name="latitude" label="纬度" rules={[{ required: true, message: '请输入纬度' }]}>
               <Input type="number" placeholder="纬度" />
             </Form.Item>
           </Col>
@@ -269,38 +325,22 @@ const UploadPanel = ({
         </Form.Item>
 
         <Form.Item name="description" label="地点描述">
-          <Input.TextArea rows={3} placeholder="描述一下这个地方..." />
+          <Input.TextArea rows={3} placeholder="描述一下这个地方" />
         </Form.Item>
 
         <Form.Item label="上传照片">
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <div className="upload-preview-list">
             {uploadItems.map((item, index) => (
               <div
-                key={index}
+                key={`${item.file.name}-${index}`}
                 className={`upload-preview-item ${coverIndex === index ? 'selected' : ''}`}
-                style={{ width: 100, height: 100, position: 'relative' }}
                 onClick={() => setCoverIndex(index)}
               >
                 {item.url ? (
-                  <img
-                    src={item.thumbUrl || item.url}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                  <img src={item.thumbUrl || item.url} alt="" />
                 ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      background: '#f0f0f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 12,
-                      color: '#999',
-                    }}
-                  >
-                    {item.uploading ? `${item.percent}%` : '待上传'}
+                  <div className="upload-waiting">
+                    {item.uploading ? `${item.percent || 0}%` : '待上传'}
                   </div>
                 )}
                 {coverIndex === index && <span className="cover-badge">封面</span>}
@@ -309,7 +349,7 @@ const UploadPanel = ({
                   size="small"
                   danger
                   icon={<DeleteOutlined />}
-                  style={{ position: 'absolute', top: 0, right: 0, padding: 2 }}
+                  className="upload-remove"
                   onClick={(e) => {
                     e.stopPropagation()
                     handleRemove(index)
@@ -318,30 +358,20 @@ const UploadPanel = ({
               </div>
             ))}
             <Upload {...uploadProps}>
-              <div
-                style={{
-                  width: 100,
-                  height: 100,
-                  border: '2px dashed #d9d9d9',
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'border-color 0.3s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1890ff')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#d9d9d9')}
-              >
-                <PlusOutlined style={{ fontSize: 20, color: '#999' }} />
+              <div className="upload-add">
+                <PlusOutlined />
               </div>
             </Upload>
           </div>
-          {uploadItems.some((item) => !item.url) && (
-            <Button icon={<UploadOutlined />} onClick={handleUploadAll}>
-              开始上传
-            </Button>
-          )}
+
+          <Button
+            icon={<UploadOutlined />}
+            onClick={handleUploadAll}
+            loading={uploading}
+            disabled={!hasPendingFiles}
+          >
+            开始上传
+          </Button>
         </Form.Item>
       </Form>
     </Modal>

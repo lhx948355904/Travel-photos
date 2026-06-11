@@ -8,6 +8,7 @@ import com.tencent.cloud.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,6 +22,13 @@ public class CosStsService {
     private final CosProperties cosProperties;
 
     public CosCredentialResponse getCredential() {
+        if (!StringUtils.hasText(cosProperties.getSecretId())
+                || !StringUtils.hasText(cosProperties.getSecretKey())
+                || !StringUtils.hasText(cosProperties.getBucket())
+                || !StringUtils.hasText(cosProperties.getRegion())) {
+            throw new BusinessException("COS 配置不完整，请检查 .env 或环境变量");
+        }
+
         try {
             String prefix = "photos/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM")) + "/*";
 
