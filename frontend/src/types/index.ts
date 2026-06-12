@@ -45,3 +45,8 @@ export interface CosCredential {
   expiredTime: number;
   allowPrefix: string;
 }
+
+export interface CosUploadResult {
+  cosKey: string;
+  url: string;
+}

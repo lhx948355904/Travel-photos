@@ -5,6 +5,7 @@
 pgdata/
 backend/data/
 backups/
+.tools/
 
 # Backend
 backend/target/

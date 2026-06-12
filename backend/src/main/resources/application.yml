@@ -8,6 +8,10 @@ spring:
       - optional:file:.env[.properties]
   application:
     name: travel-photo-map
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
   datasource:
     url: "${DB_URL:jdbc:h2:file:./data/photomap;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;INIT=RUNSCRIPT FROM 'classpath:schema-h2.sql'}"
     username: ${DB_USER:sa}

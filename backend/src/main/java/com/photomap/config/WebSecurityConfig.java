@@ -36,11 +36,19 @@ public class WebSecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) ->
+                        writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                .accessDeniedHandler((request, response, accessDeniedException) ->
+                        writeJsonError(response, HttpServletResponse.SC_FORBIDDEN, "Forbidden"))
+            )
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/locations/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/photos/**").permitAll()
                 .requestMatchers("/api/cos/credential").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/cos/upload").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/locations").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/locations/**").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/locations/**").authenticated()
@@ -51,6 +59,17 @@ public class WebSecurityConfig {
             .addFilterBefore(new JwtAuthenticationFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private static void writeJsonError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(String.format(
+                "{\"code\":%d,\"message\":\"%s\",\"data\":null}",
+                status,
+                message
+        ));
     }
 
     @RequiredArgsConstructor
@@ -77,6 +96,9 @@ public class WebSecurityConfig {
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     request.setAttribute("currentUser", username);
+                } else {
+                    writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, "Login expired");
+                    return;
                 }
             }
             filterChain.doFilter(request, response);

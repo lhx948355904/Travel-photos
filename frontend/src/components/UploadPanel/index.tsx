@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Modal,
   Upload,
@@ -14,9 +14,8 @@ import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd/es/upload'
 import dayjs from 'dayjs'
 import { useExif } from './useExif'
-import { getCosCredential } from '../../api/cos'
+import { uploadToCos } from '../../api/cos'
 import { createLocation, addPhotos, updateLocation } from '../../api/location'
-import { uploadFile } from '../../utils/cosUpload'
 import { getOrientation, getThumbnailUrl } from '../../utils/image'
 import type { Location, PhotoUploadInfo } from '../../types'
 
@@ -31,7 +30,9 @@ interface UploadPanelProps {
 }
 
 interface UploadItem {
+  id: string
   file: File
+  previewUrl: string
   url?: string
   thumbUrl?: string
   cosKey?: string
@@ -42,7 +43,10 @@ interface UploadItem {
   shotDate?: string
   uploading?: boolean
   percent?: number
+  error?: string
 }
+
+const createUploadId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 const readImageMeta = (file: File): Promise<{ width: number; height: number }> => {
   return new Promise((resolve) => {
@@ -75,6 +79,17 @@ const UploadPanel = ({
   const [coverIndex, setCoverIndex] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const uploadItemsRef = useRef<UploadItem[]>([])
+
+  useEffect(() => {
+    uploadItemsRef.current = uploadItems
+  }, [uploadItems])
+
+  useEffect(() => {
+    return () => {
+      uploadItemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl))
+    }
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -99,7 +114,72 @@ const UploadPanel = ({
     })
   }, [editingLocation, form, initialLat, initialLng, initialName, open])
 
-  const beforeUpload = async (file: File) => {
+  const updateUploadItem = (id: string, patch: Partial<UploadItem>) => {
+    setUploadItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
+    )
+  }
+
+  const uploadSingleItem = async (id: string, file: File) => {
+    updateUploadItem(id, { uploading: true, percent: 0, error: undefined })
+
+    try {
+      updateUploadItem(id, { percent: 30 })
+      const uploaded = await uploadToCos(file)
+      updateUploadItem(id, { percent: 85 })
+      const meta = await readImageMeta(file)
+
+      updateUploadItem(id, {
+        url: uploaded.url,
+        thumbUrl: getThumbnailUrl(uploaded.url, 600),
+        cosKey: uploaded.cosKey,
+        width: meta.width,
+        height: meta.height,
+        orientation: getOrientation(meta.width, meta.height),
+        uploading: false,
+        percent: 100,
+        error: undefined,
+      })
+    } catch (err: any) {
+      const error = err.message || '上传失败，请重试'
+      updateUploadItem(id, { uploading: false, error })
+      message.error(`${file.name} ${error}`)
+    }
+  }
+
+  const addUploadFile = (file: File) => {
+    const id = createUploadId()
+    const previewUrl = URL.createObjectURL(file)
+
+    setUploadItems((prev) => [
+      ...prev,
+      {
+        id,
+        file,
+        previewUrl,
+        fileSize: file.size,
+      },
+    ])
+
+    void readExif(file).then((exifData) => {
+      updateUploadItem(id, { shotDate: exifData.shotDate })
+
+      if (exifData.longitude && exifData.latitude && !form.getFieldValue('longitude')) {
+        form.setFieldsValue({
+          longitude: exifData.longitude,
+          latitude: exifData.latitude,
+        })
+      }
+
+      if (exifData.shotDate && !form.getFieldValue('travelDate')) {
+        form.setFieldValue('travelDate', dayjs(exifData.shotDate))
+      }
+    })
+
+    void uploadSingleItem(id, file)
+  }
+
+  const beforeUpload = (file: File) => {
     const isImage = file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.heic')
     if (!isImage) {
       message.error('只能上传图片文件')
@@ -112,59 +192,34 @@ const UploadPanel = ({
       return Upload.LIST_IGNORE
     }
 
-    const exifData = await readExif(file)
-    setUploadItems((prev) => [
-      ...prev,
-      {
-        file,
-        shotDate: exifData.shotDate,
-        fileSize: file.size,
-      },
-    ])
-
-    if (exifData.longitude && exifData.latitude && !form.getFieldValue('longitude')) {
-      form.setFieldsValue({
-        longitude: exifData.longitude,
-        latitude: exifData.latitude,
-      })
-    }
-
-    if (exifData.shotDate && !form.getFieldValue('travelDate')) {
-      form.setFieldValue('travelDate', dayjs(exifData.shotDate))
-    }
-
-    return false
+    addUploadFile(file)
+    return Upload.LIST_IGNORE
   }
 
   const uploadPendingItems = async (items: UploadItem[]) => {
     const pendingCount = items.filter((item) => !item.url).length
     if (pendingCount === 0) return items
 
-    const cred = await getCosCredential()
     const nextItems = [...items]
 
     for (let i = 0; i < nextItems.length; i++) {
       const item = nextItems[i]
-      if (item.url) continue
+      if (item.url || item.uploading) continue
 
-      nextItems[i] = { ...item, uploading: true, percent: 0 }
+      nextItems[i] = { ...item, uploading: true, percent: 0, error: undefined }
       setUploadItems([...nextItems])
 
-      const ext = item.file.name.split('.').pop() || 'jpg'
-      const key = `${cred.allowPrefix.replace('/*', '')}/${Date.now()}_${i}.${ext}`
-
       try {
-        const url = await uploadFile(cred, item.file, key, (percent) => {
-          nextItems[i] = { ...nextItems[i], percent }
-          setUploadItems([...nextItems])
-        })
+        const uploaded = await uploadToCos(item.file)
+        nextItems[i] = { ...nextItems[i], percent: 85 }
+        setUploadItems([...nextItems])
         const meta = await readImageMeta(item.file)
 
         nextItems[i] = {
           ...nextItems[i],
-          url,
-          thumbUrl: getThumbnailUrl(url, 600),
-          cosKey: key,
+          url: uploaded.url,
+          thumbUrl: getThumbnailUrl(uploaded.url, 600),
+          cosKey: uploaded.cosKey,
           width: meta.width,
           height: meta.height,
           orientation: getOrientation(meta.width, meta.height),
@@ -173,7 +228,7 @@ const UploadPanel = ({
         }
         setUploadItems([...nextItems])
       } catch (err: any) {
-        nextItems[i] = { ...nextItems[i], uploading: false }
+        nextItems[i] = { ...nextItems[i], uploading: false, error: err.message || '上传失败' }
         setUploadItems([...nextItems])
         throw new Error(err.message || `上传失败：${item.file.name}`)
       }
@@ -183,8 +238,9 @@ const UploadPanel = ({
   }
 
   const handleUploadAll = async () => {
-    if (uploadItems.length === 0) {
-      message.warning('请先选择照片')
+    const retryableItems = uploadItems.filter((item) => !item.url && !item.uploading)
+    if (retryableItems.length === 0) {
+      message.warning(uploadItems.length > 0 ? '照片仍在上传，请稍候' : '请先选择照片')
       return
     }
 
@@ -201,6 +257,11 @@ const UploadPanel = ({
   }
 
   const handleRemove = (index: number) => {
+    const item = uploadItems[index]
+    if (item) {
+      URL.revokeObjectURL(item.previewUrl)
+    }
+
     setUploadItems((prev) => prev.filter((_, i) => i !== index))
     if (coverIndex === index) {
       setCoverIndex(0)
@@ -211,6 +272,11 @@ const UploadPanel = ({
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
+
+    if (uploadItems.some((item) => item.uploading)) {
+      message.warning('照片仍在上传，请稍候')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -267,6 +333,7 @@ const UploadPanel = ({
 
   const handleClose = () => {
     form.resetFields()
+    uploadItems.forEach((item) => URL.revokeObjectURL(item.previewUrl))
     setUploadItems([])
     setCoverIndex(0)
     setUploading(false)
@@ -280,7 +347,7 @@ const UploadPanel = ({
     accept: 'image/*,.heic',
   }
 
-  const hasPendingFiles = uploadItems.some((item) => !item.url)
+  const hasPendingFiles = uploadItems.some((item) => !item.url && !item.uploading)
 
   return (
     <Modal
@@ -336,11 +403,10 @@ const UploadPanel = ({
                 className={`upload-preview-item ${coverIndex === index ? 'selected' : ''}`}
                 onClick={() => setCoverIndex(index)}
               >
-                {item.url ? (
-                  <img src={item.thumbUrl || item.url} alt="" />
-                ) : (
-                  <div className="upload-waiting">
-                    {item.uploading ? `${item.percent || 0}%` : '待上传'}
+                <img src={item.thumbUrl || item.url || item.previewUrl} alt="" />
+                {!item.url && (
+                  <div className={`upload-status ${item.error ? 'error' : ''}`}>
+                    {item.error ? '上传失败' : item.uploading ? `${item.percent || 0}%` : '待上传'}
                   </div>
                 )}
                 {coverIndex === index && <span className="cover-badge">封面</span>}
