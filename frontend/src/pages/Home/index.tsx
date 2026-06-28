@@ -1,12 +1,15 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, FloatButton, message, Popconfirm } from 'antd'
+import { Button, message, Popconfirm } from 'antd'
 import {
+  CalendarOutlined,
+  CameraOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EnvironmentOutlined,
   LoginOutlined,
   LogoutOutlined,
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
 } from '@ant-design/icons'
 import MapView from '../../components/MapView/MapView'
 import SearchBox from '../../components/MapView/SearchBox'
@@ -29,6 +32,20 @@ const Home = () => {
   const [clickPosition, setClickPosition] = useState<{ lng: number; lat: number } | null>(null)
   const [searchPoi, setSearchPoi] = useState<{ name: string; lng: number; lat: number } | null>(null)
   const [focusPosition, setFocusPosition] = useState<{ name: string; lng: number; lat: number } | null>(null)
+
+  const totalPhotos = useMemo(
+    () => locations.reduce((sum, location) => sum + (location.photoCount || 0), 0),
+    [locations]
+  )
+
+  const latestLocation = useMemo(() => {
+    return [...locations]
+      .filter((location) => location.travelDate)
+      .sort((a, b) => String(b.travelDate).localeCompare(String(a.travelDate)))[0]
+  }, [locations])
+
+  const focusLabel = searchPoi?.name || latestLocation?.name || '暂无焦点地点'
+  const latestDateLabel = latestLocation?.travelDate || '等待记录'
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -103,64 +120,133 @@ const Home = () => {
     setClickPosition(null)
   }
 
+  const openCreatePanel = () => {
+    setEditingLocation(null)
+    setClickPosition(searchPoi ? { lng: searchPoi.lng, lat: searchPoi.lat } : null)
+    setUploadOpen(true)
+  }
+
   return (
     <div className="home-page">
       <BlurredCarousel locations={locations} />
+      <div className="home-atmosphere" aria-hidden="true" />
 
-      <div className="home-content">
-        <div className="home-header">
-          <div className="home-titlebar">
-            <h1>旅行摄影地图</h1>
+      <main className="home-content">
+        <header className="home-header">
+          <div className="home-brand">
+            <div className="brand-mark" aria-hidden="true">
+              <EnvironmentOutlined />
+            </div>
+            <div className="home-titlebar">
+              <span>Travel Photo Map</span>
+              <h1>旅行摄影地图</h1>
+            </div>
+          </div>
+
+          <div className="home-search">
             <SearchBox onSelectPoi={handleSearchSelect} />
           </div>
 
-          {isAdmin ? (
-            <Button
-              type="primary"
-              ghost
-              icon={<LogoutOutlined />}
-              onClick={logout}
-              className="header-action"
-            >
-              退出登录
-            </Button>
-          ) : (
-            <Button
-              type="primary"
-              ghost
-              icon={<LoginOutlined />}
-              onClick={() => navigate('/login')}
-              className="header-action"
-            >
-              管理员登录
-            </Button>
-          )}
-        </div>
+          <div className="home-actions">
+            <span className={isAdmin ? 'mode-pill admin' : 'mode-pill'}>
+              {isAdmin ? '管理员' : '访客'}
+            </span>
+            {isAdmin ? (
+              <Button
+                type="primary"
+                icon={<LogoutOutlined />}
+                onClick={logout}
+                className="header-action"
+              >
+                退出登录
+              </Button>
+            ) : (
+              <Button
+                type="primary"
+                ghost
+                icon={<LoginOutlined />}
+                onClick={() => navigate('/login')}
+                className="header-action"
+              >
+                管理员登录
+              </Button>
+            )}
+          </div>
+        </header>
 
-        <div className="map-shell">
-          <MapView
-            locations={locations}
-            onMarkerClick={handleMarkerClick}
-            onMapClick={handleMapClick}
-            focusPosition={focusPosition}
-            isAdmin={isAdmin}
-          />
-        </div>
-      </div>
+        <section className="home-workspace">
+          <aside className="story-panel" aria-label="旅行地图概览">
+            <div className="panel-block">
+              <span className="panel-label">空间相册</span>
+              <h2>地点、照片、时间</h2>
+              <p>{isAdmin ? '管理视图已开启' : '公开浏览视图'}</p>
+            </div>
 
-      {isAdmin && (
-        <FloatButton.Group trigger="hover" style={{ right: 24, bottom: 24 }}>
-          <FloatButton
-            icon={<PlusOutlined />}
-            tooltip="添加地点"
-            onClick={() => {
-              setEditingLocation(null)
-              setClickPosition(searchPoi ? { lng: searchPoi.lng, lat: searchPoi.lat } : null)
-              setUploadOpen(true)
-            }}
-          />
-        </FloatButton.Group>
-      )}
+            <div className="metric-grid">
+              <div className="metric-card">
+                <EnvironmentOutlined />
+                <span>地点</span>
+                <strong>{locations.length}</strong>
+              </div>
+              <div className="metric-card">
+                <CameraOutlined />
+                <span>照片</span>
+                <strong>{totalPhotos}</strong>
+              </div>
+              <div className="metric-card wide">
+                <CalendarOutlined />
+                <span>最近旅程</span>
+                <strong>{latestDateLabel}</strong>
+              </div>
+            </div>
+
+            <div className="focus-card">
+              <span>当前焦点</span>
+              <strong>{focusLabel}</strong>
+              {searchPoi && (
+                <small>
+                  {searchPoi.lng.toFixed(4)}, {searchPoi.lat.toFixed(4)}
+                </small>
+              )}
+            </div>
+
+            {isAdmin && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={openCreatePanel}
+                className="panel-create"
+                block
+              >
+                新增地点
+              </Button>
+            )}
+          </aside>
+
+          <section className="map-stage" aria-label="旅行地图">
+            <div className="map-stage-header">
+              <div>
+                <span>Map Canvas</span>
+                <h2>旅行足迹</h2>
+              </div>
+              <div className="map-stage-status">
+                <EnvironmentOutlined />
+                <span>{locations.length > 0 ? `${locations.length} 个地点` : '暂无地点'}</span>
+              </div>
+            </div>
+
+            <div className="map-shell">
+              <MapView
+                locations={locations}
+                onMarkerClick={handleMarkerClick}
+                onMapClick={handleMapClick}
+                focusPosition={focusPosition}
+                isAdmin={isAdmin}
+              />
+            </div>
+          </section>
+        </section>
+      </main>
 
       <UploadPanel
         open={uploadOpen}

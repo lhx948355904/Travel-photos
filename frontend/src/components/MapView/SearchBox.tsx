@@ -124,12 +124,14 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
   return (
     <div className="search-box">
       <Input
+        className="search-input"
         prefix={<SearchOutlined />}
-        placeholder="搜索地点"
+        placeholder="搜索城市、景点或地址"
         value={keyword}
         onChange={(e) => handleSearch(e.target.value)}
         disabled={!ready}
         size="large"
+        aria-label="搜索地点"
       />
 
       {(suggestions.length > 0 || loading) && (

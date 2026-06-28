@@ -24,10 +24,27 @@ const MapView = ({ locations, onMarkerClick, onMapClick, focusPosition, isAdmin 
     const thumbUrl = getMarkerThumbnailUrl(location.coverThumbUrl || '')
     const div = document.createElement('div')
     div.className = 'photo-marker'
-    div.innerHTML = `
-      <img src="${thumbUrl}" alt="${location.name}" loading="lazy" />
-      ${location.photoCount > 1 ? `<span class="count">${location.photoCount}</span>` : ''}
-    `
+
+    if (thumbUrl) {
+      const image = document.createElement('img')
+      image.src = thumbUrl
+      image.alt = location.name
+      image.loading = 'lazy'
+      div.appendChild(image)
+    } else {
+      const fallback = document.createElement('span')
+      fallback.className = 'photo-marker-fallback'
+      fallback.textContent = location.name.slice(0, 1) || 'T'
+      div.appendChild(fallback)
+    }
+
+    if (location.photoCount > 1) {
+      const count = document.createElement('span')
+      count.className = 'count'
+      count.textContent = String(location.photoCount)
+      div.appendChild(count)
+    }
+
     return div
   }, [])
 
