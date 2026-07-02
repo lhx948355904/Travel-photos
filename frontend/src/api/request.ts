@@ -1,40 +1,22 @@
 import axios from 'axios'
-import { useAuthStore } from '../store/useAuthStore'
-import { useMapStore } from '../store/useMapStore'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE || '/api',
   timeout: 30000,
 })
 
-request.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
-
 request.interceptors.response.use(
   (response) => {
     const data = response.data
-    if (data.code !== 0) {
-      return Promise.reject(new Error(data.message || '请求失败'))
+    if (data?.code !== 0) {
+      return Promise.reject(new Error(data?.message || '请求失败'))
     }
     return data.data
   },
   (error) => {
-    if (error.response?.status === 401) {
-      useAuthStore.getState().clearAuth()
-      useMapStore.getState().resetMap()
-      window.location.href = '/login'
-    }
     const message = error.response?.data?.message || error.message || '请求失败'
     return Promise.reject(new Error(message))
-  }
+  },
 )
 
 export default request

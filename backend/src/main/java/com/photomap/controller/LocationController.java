@@ -7,7 +7,7 @@ import com.photomap.dto.LocationUpdateRequest;
 import com.photomap.dto.LocationVO;
 import com.photomap.dto.PhotoDTO;
 import com.photomap.service.LocationService;
-import com.photomap.util.SecurityUtils;
+import com.photomap.service.SiteOwnerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,38 +29,39 @@ import java.util.Map;
 public class LocationController {
 
     private final LocationService locationService;
+    private final SiteOwnerService siteOwnerService;
 
     @GetMapping
     public ApiResponse<List<LocationVO>> list(@RequestParam(required = false) String bbox) {
-        return ApiResponse.success(locationService.listLocations(SecurityUtils.currentUserId(), bbox));
+        return ApiResponse.success(locationService.listLocations(siteOwnerService.getOwnerId(), bbox));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<LocationDetailVO> detail(@PathVariable Long id) {
-        return ApiResponse.success(locationService.getLocationDetail(SecurityUtils.currentUserId(), id));
+        return ApiResponse.success(locationService.getLocationDetail(siteOwnerService.getOwnerId(), id));
     }
 
     @PostMapping
     public ApiResponse<Map<String, Long>> create(@Valid @RequestBody LocationCreateRequest request) {
-        Long id = locationService.createLocation(SecurityUtils.currentUserId(), request);
+        Long id = locationService.createLocation(siteOwnerService.getOwnerId(), request);
         return ApiResponse.success(Map.of("id", id));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<Void> update(@PathVariable Long id, @RequestBody LocationUpdateRequest request) {
-        locationService.updateLocation(SecurityUtils.currentUserId(), id, request);
+        locationService.updateLocation(siteOwnerService.getOwnerId(), id, request);
         return ApiResponse.success();
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
-        locationService.deleteLocation(SecurityUtils.currentUserId(), id);
+        locationService.deleteLocation(siteOwnerService.getOwnerId(), id);
         return ApiResponse.success();
     }
 
     @PostMapping("/{id}/photos")
     public ApiResponse<Void> addPhotos(@PathVariable Long id, @RequestBody List<PhotoDTO> photos) {
-        locationService.addPhotos(SecurityUtils.currentUserId(), id, photos);
+        locationService.addPhotos(siteOwnerService.getOwnerId(), id, photos);
         return ApiResponse.success();
     }
 }

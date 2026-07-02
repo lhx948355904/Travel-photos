@@ -8,10 +8,10 @@ interface ActivityPanelProps {
 }
 
 const statusText: Record<ActivitySocketStatus, string> = {
-  connecting: 'Connecting',
-  open: 'Live',
-  closed: 'Reconnecting',
-  error: 'Offline',
+  connecting: '连接中',
+  open: '在线',
+  closed: '重连中',
+  error: '离线',
 }
 
 const formatTime = (timestamp: string) => {
@@ -27,11 +27,11 @@ const formatTime = (timestamp: string) => {
 
 const ActivityPanel = ({ status, onlineCount, messages }: ActivityPanelProps) => {
   return (
-    <section className="activity-panel" aria-label="Live map activity">
+    <section className="activity-panel" aria-label="实时地图动态">
       <div className="activity-panel-header">
         <div>
           <span>WebSocket</span>
-          <strong>Live Activity</strong>
+          <strong>实时动态</strong>
         </div>
         <span className={`activity-status ${status}`}>
           <WifiOutlined />
@@ -41,13 +41,13 @@ const ActivityPanel = ({ status, onlineCount, messages }: ActivityPanelProps) =>
 
       <div className="activity-online">
         <TeamOutlined />
-        <span>Online now</span>
+        <span>当前在线</span>
         <strong>{onlineCount}</strong>
       </div>
 
       <div className="activity-feed">
         {messages.length === 0 ? (
-          <p className="activity-empty">Waiting for live events...</p>
+          <p className="activity-empty">等待新的地图动态</p>
         ) : (
           messages.map((message) => (
             <article className="activity-item" key={message.id}>

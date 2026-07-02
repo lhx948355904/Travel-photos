@@ -1,18 +1,5 @@
 export type Orientation = 'landscape' | 'portrait' | 'square'
-export type UserRole = 'USER' | 'ADMIN'
 export type PhotoStatus = 'pending' | 'approved' | 'rejected'
-
-export interface User {
-  id: number
-  username: string
-  role: UserRole
-}
-
-export interface AuthResult {
-  token: string
-  expiresIn: number
-  user: User
-}
 
 export interface Photo {
   id: number

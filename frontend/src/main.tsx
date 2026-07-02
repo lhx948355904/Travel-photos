@@ -4,10 +4,12 @@ import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import App from './App'
 import './styles/global.css'
+import './styles/landing.css'
+import './styles/map.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#1890ff' } }}>
+    <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#e48600' } }}>
       <App />
     </ConfigProvider>
   </React.StrictMode>,

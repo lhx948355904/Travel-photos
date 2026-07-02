@@ -153,7 +153,7 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
                 <EnvironmentOutlined />
                 <span>
                   <strong>{item.name}</strong>
-                  <small>{[item.district, item.address].filter(Boolean).join(' · ')}</small>
+                  <small>{[item.district, item.address].filter(Boolean).join(' / ')}</small>
                 </span>
               </button>
             ))}
