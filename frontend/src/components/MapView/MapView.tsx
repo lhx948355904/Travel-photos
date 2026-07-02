@@ -8,10 +8,16 @@ interface MapViewProps {
   onMarkerClick: (location: Location) => void
   onMapClick?: (lng: number, lat: number) => void
   focusPosition?: { lng: number; lat: number; name?: string } | null
-  isAdmin: boolean
+  canCreateLocation: boolean
 }
 
-const MapView = ({ locations, onMarkerClick, onMapClick, focusPosition, isAdmin }: MapViewProps) => {
+const MapView = ({
+  locations,
+  onMarkerClick,
+  onMapClick,
+  focusPosition,
+  canCreateLocation,
+}: MapViewProps) => {
   const containerId = 'amap-container'
   const { map: mapRef, isReady } = useAmap(containerId)
   const markersRef = useRef<any[]>([])
@@ -124,7 +130,7 @@ const MapView = ({ locations, onMarkerClick, onMapClick, focusPosition, isAdmin 
   }, [map, isReady, focusPosition])
 
   useEffect(() => {
-    if (!map || !isReady || !isAdmin) return
+    if (!map || !isReady || !canCreateLocation) return
 
     const clickHandler = (e: any) => {
       const lng = e.lnglat.getLng()
@@ -136,7 +142,7 @@ const MapView = ({ locations, onMarkerClick, onMapClick, focusPosition, isAdmin 
     return () => {
       map.off('click', clickHandler)
     }
-  }, [map, isReady, isAdmin, onMapClick])
+  }, [map, isReady, canCreateLocation, onMapClick])
 
   return (
     <div

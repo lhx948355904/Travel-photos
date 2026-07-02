@@ -11,9 +11,12 @@ import java.util.List;
 @Mapper
 public interface PhotoMapper extends BaseMapper<Photo> {
 
-    @Select("SELECT * FROM photo WHERE location_id = #{locationId} AND deleted = false ORDER BY sort_order, created_at")
-    List<Photo> selectByLocationId(@Param("locationId") Long locationId);
+    @Select("SELECT * FROM photo WHERE user_id = #{userId} AND location_id = #{locationId} AND deleted = false AND status = 'approved' ORDER BY sort_order, created_at")
+    List<Photo> selectByLocationId(@Param("userId") Long userId, @Param("locationId") Long locationId);
 
-    @Select("SELECT COUNT(*) FROM photo WHERE location_id = #{locationId} AND deleted = false")
-    int countByLocationId(@Param("locationId") Long locationId);
+    @Select("SELECT COUNT(*) FROM photo WHERE user_id = #{userId} AND location_id = #{locationId} AND deleted = false AND status = 'approved'")
+    int countByLocationId(@Param("userId") Long userId, @Param("locationId") Long locationId);
+
+    @Select("SELECT * FROM photo WHERE id = #{id} AND user_id = #{userId} AND deleted = false LIMIT 1")
+    Photo selectOwnedById(@Param("userId") Long userId, @Param("id") Long id);
 }

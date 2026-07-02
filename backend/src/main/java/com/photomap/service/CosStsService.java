@@ -19,10 +19,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -32,14 +37,16 @@ import java.util.UUID;
 public class CosStsService {
 
     private static final long MAX_FILE_SIZE = 20L * 1024L * 1024L;
+    private static final long MAX_PIXELS = 40_000_000L;
+    private static final Set<String> DECODE_REQUIRED_FORMATS = Set.of("jpg", "jpeg", "png", "gif", "bmp");
 
     private final CosProperties cosProperties;
 
-    public CosCredentialResponse getCredential() {
+    public CosCredentialResponse getCredential(Long userId) {
         validateCosConfig();
 
         try {
-            String prefix = "photos/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM")) + "/*";
+            String prefix = createUserPrefix(userId) + "/*";
 
             TreeMap<String, Object> config = new TreeMap<>();
             config.put("secretId", cosProperties.getSecretId());
@@ -77,11 +84,11 @@ public class CosStsService {
         }
     }
 
-    public CosUploadResponse uploadFile(MultipartFile file) {
+    public CosUploadResponse uploadFile(Long userId, MultipartFile file) {
         validateCosConfig();
-        validateImage(file);
+        String format = validateImage(file);
 
-        String key = createObjectKey(file.getOriginalFilename());
+        String key = createObjectKey(userId, file.getOriginalFilename(), format);
         COSCredentials credentials = new BasicCOSCredentials(cosProperties.getSecretId(), cosProperties.getSecretKey());
         ClientConfig clientConfig = new ClientConfig(new Region(cosProperties.getRegion()));
         COSClient cosClient = new COSClient(credentials, clientConfig);
@@ -103,6 +110,8 @@ public class CosStsService {
             CosUploadResponse response = new CosUploadResponse();
             response.setCosKey(key);
             response.setUrl(buildPublicUrl(key));
+            response.setStatus("approved");
+            response.setReviewReason("basic image validation passed");
             return response;
         } catch (IOException e) {
             log.error("Failed to read upload file", e);
@@ -124,7 +133,7 @@ public class CosStsService {
         }
     }
 
-    private void validateImage(MultipartFile file) {
+    private String validateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("请选择要上传的图片");
         }
@@ -133,30 +142,106 @@ public class CosStsService {
             throw new BusinessException("图片大小不能超过 20MB");
         }
 
-        String filename = file.getOriginalFilename();
-        String contentType = file.getContentType();
-        boolean isImageType = StringUtils.hasText(contentType)
-                && contentType.toLowerCase(Locale.ROOT).startsWith("image/");
-        boolean isHeic = StringUtils.hasText(filename)
-                && filename.toLowerCase(Locale.ROOT).endsWith(".heic");
+        try {
+            byte[] bytes = file.getBytes();
+            String format = detectImageFormat(bytes);
+            if (!StringUtils.hasText(format)) {
+                throw new BusinessException("文件不是合法图片");
+            }
 
-        if (!isImageType && !isHeic) {
-            throw new BusinessException("只能上传图片文件");
+            if (DECODE_REQUIRED_FORMATS.contains(format)) {
+                BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+                if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) {
+                    throw new BusinessException("图片无法解析");
+                }
+                if ((long) image.getWidth() * image.getHeight() > MAX_PIXELS) {
+                    throw new BusinessException("图片像素过大");
+                }
+            }
+
+            return format;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new BusinessException("读取上传图片失败");
         }
     }
 
-    private String createObjectKey(String originalFilename) {
-        String prefix = "photos/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
-        String ext = "jpg";
-        if (StringUtils.hasText(originalFilename) && originalFilename.contains(".")) {
-            ext = originalFilename.substring(originalFilename.lastIndexOf('.') + 1)
-                    .toLowerCase(Locale.ROOT)
-                    .replaceAll("[^a-z0-9]", "");
-            if (!StringUtils.hasText(ext)) {
-                ext = "jpg";
+    private String detectImageFormat(byte[] bytes) {
+        if (bytes.length >= 3
+                && (bytes[0] & 0xFF) == 0xFF
+                && (bytes[1] & 0xFF) == 0xD8
+                && (bytes[2] & 0xFF) == 0xFF) {
+            return "jpg";
+        }
+        if (bytes.length >= 8
+                && (bytes[0] & 0xFF) == 0x89
+                && bytes[1] == 0x50
+                && bytes[2] == 0x4E
+                && bytes[3] == 0x47
+                && bytes[4] == 0x0D
+                && bytes[5] == 0x0A
+                && bytes[6] == 0x1A
+                && bytes[7] == 0x0A) {
+            return "png";
+        }
+        if (bytes.length >= 6
+                && (startsWith(bytes, "GIF87a") || startsWith(bytes, "GIF89a"))) {
+            return "gif";
+        }
+        if (bytes.length >= 2 && bytes[0] == 0x42 && bytes[1] == 0x4D) {
+            return "bmp";
+        }
+        if (bytes.length >= 12
+                && startsWith(bytes, "RIFF")
+                && bytes[8] == 0x57
+                && bytes[9] == 0x45
+                && bytes[10] == 0x42
+                && bytes[11] == 0x50) {
+            return "webp";
+        }
+        if (bytes.length >= 12
+                && bytes[4] == 0x66
+                && bytes[5] == 0x74
+                && bytes[6] == 0x79
+                && bytes[7] == 0x70
+                && isHeicBrand(Arrays.copyOfRange(bytes, 8, 12))) {
+            return "heic";
+        }
+        return null;
+    }
+
+    private boolean startsWith(byte[] bytes, String text) {
+        byte[] expected = text.getBytes();
+        if (bytes.length < expected.length) {
+            return false;
+        }
+        for (int i = 0; i < expected.length; i++) {
+            if (bytes[i] != expected[i]) {
+                return false;
             }
         }
+        return true;
+    }
+
+    private boolean isHeicBrand(byte[] brand) {
+        String value = new String(brand).toLowerCase(Locale.ROOT);
+        return value.equals("heic") || value.equals("heix") || value.equals("hevc")
+                || value.equals("hevx") || value.equals("mif1") || value.equals("msf1");
+    }
+
+    private String createObjectKey(Long userId, String originalFilename, String detectedFormat) {
+        String prefix = createUserPrefix(userId);
+        String ext = StringUtils.hasText(detectedFormat) ? detectedFormat : "jpg";
+        if ("jpg".equals(ext) && StringUtils.hasText(originalFilename)
+                && originalFilename.toLowerCase(Locale.ROOT).endsWith(".jpeg")) {
+            ext = "jpeg";
+        }
         return prefix + "/" + System.currentTimeMillis() + "_" + UUID.randomUUID() + "." + ext;
+    }
+
+    private String createUserPrefix(Long userId) {
+        return "users/" + userId + "/photos/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
     }
 
     private String buildPublicUrl(String key) {

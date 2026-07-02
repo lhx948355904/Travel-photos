@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { useAuthStore } from '../store/useAuthStore'
+import { useMapStore } from '../store/useMapStore'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE || '/api',
@@ -25,8 +27,9 @@ request.interceptors.response.use(
     return data.data
   },
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      localStorage.removeItem('token')
+    if (error.response?.status === 401) {
+      useAuthStore.getState().clearAuth()
+      useMapStore.getState().resetMap()
       window.location.href = '/login'
     }
     const message = error.response?.data?.message || error.message || '请求失败'

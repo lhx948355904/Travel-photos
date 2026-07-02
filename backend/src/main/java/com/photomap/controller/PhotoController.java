@@ -2,6 +2,7 @@ package com.photomap.controller;
 
 import com.photomap.common.ApiResponse;
 import com.photomap.service.PhotoService;
+import com.photomap.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,7 +18,7 @@ public class PhotoController {
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
-        photoService.deletePhoto(id);
+        photoService.deletePhoto(SecurityUtils.currentUserId(), id);
         return ApiResponse.success();
     }
 }

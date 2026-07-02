@@ -1,24 +1,39 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Form, Input, message } from 'antd'
+import { Button, Form, Input, Tabs, message } from 'antd'
 import { ArrowLeftOutlined, EnvironmentOutlined, LockOutlined, UserOutlined } from '@ant-design/icons'
-import { login } from '../../api/auth'
+import { login, register } from '../../api/auth'
 import { useAuthStore } from '../../store/useAuthStore'
+
+interface AuthFormValues {
+  username: string
+  password: string
+}
 
 const Login = () => {
   const navigate = useNavigate()
-  const { setToken } = useAuthStore()
+  const { setAuth } = useAuthStore()
+  const [mode, setMode] = useState<'login' | 'register'>('login')
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (values: { username: string; password: string }) => {
+  const loginAndEnter = async (values: AuthFormValues, successText: string) => {
+    const res = await login(values)
+    setAuth(res.token, res.user)
+    message.success(successText)
+    navigate('/')
+  }
+
+  const handleSubmit = async (values: AuthFormValues) => {
     setLoading(true)
     try {
-      const res = await login(values)
-      setToken(res.token)
-      message.success('登录成功')
-      navigate('/')
+      if (mode === 'register') {
+        await register(values)
+        await loginAndEnter(values, '注册成功，已进入你的旅行地图')
+      } else {
+        await loginAndEnter(values, '登录成功')
+      }
     } catch (error: any) {
-      message.error(error.message || '登录失败')
+      message.error(error.message || (mode === 'register' ? '注册失败' : '登录失败'))
     } finally {
       setLoading(false)
     }
@@ -45,29 +60,44 @@ const Login = () => {
           </div>
 
           <div className="login-route-card">
-            <span>Admin Access</span>
-            <strong>地点与照片管理</strong>
+            <span>Private Map</span>
+            <strong>注册后管理自己的地点与照片</strong>
           </div>
         </div>
 
         <div className="login-panel">
           <div className="login-panel-header">
-            <span>管理员登录</span>
-            <h2>进入管理台</h2>
+            <span>{mode === 'register' ? '创建账号' : '欢迎回来'}</span>
+            <h2>{mode === 'register' ? '注册你的旅行相册' : '登录你的旅行地图'}</h2>
           </div>
+
+          <Tabs
+            activeKey={mode}
+            onChange={(key) => setMode(key as 'login' | 'register')}
+            items={[
+              { key: 'login', label: '登录' },
+              { key: 'register', label: '注册' },
+            ]}
+          />
 
           <Form onFinish={handleSubmit} layout="vertical" requiredMark={false}>
             <Form.Item
               name="username"
               label="用户名"
-              rules={[{ required: true, message: '请输入用户名' }]}
+              rules={[
+                { required: true, message: '请输入用户名' },
+                { min: 3, message: '用户名至少 3 个字符' },
+              ]}
             >
               <Input prefix={<UserOutlined />} placeholder="用户名" size="large" />
             </Form.Item>
             <Form.Item
               name="password"
               label="密码"
-              rules={[{ required: true, message: '请输入密码' }]}
+              rules={[
+                { required: true, message: '请输入密码' },
+                { min: 6, message: '密码至少 6 位' },
+              ]}
             >
               <Input.Password
                 prefix={<LockOutlined />}
@@ -84,7 +114,7 @@ const Login = () => {
                 size="large"
                 className="login-submit"
               >
-                登录
+                {mode === 'register' ? '注册并登录' : '登录'}
               </Button>
             </Form.Item>
           </Form>

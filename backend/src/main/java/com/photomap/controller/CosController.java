@@ -4,6 +4,7 @@ import com.photomap.common.ApiResponse;
 import com.photomap.dto.CosCredentialResponse;
 import com.photomap.dto.CosUploadResponse;
 import com.photomap.service.CosStsService;
+import com.photomap.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,11 +22,11 @@ public class CosController {
 
     @GetMapping("/credential")
     public ApiResponse<CosCredentialResponse> getCredential() {
-        return ApiResponse.success(cosStsService.getCredential());
+        return ApiResponse.success(cosStsService.getCredential(SecurityUtils.currentUserId()));
     }
 
     @PostMapping("/upload")
     public ApiResponse<CosUploadResponse> upload(@RequestParam("file") MultipartFile file) {
-        return ApiResponse.success(cosStsService.uploadFile(file));
+        return ApiResponse.success(cosStsService.uploadFile(SecurityUtils.currentUserId(), file));
     }
 }

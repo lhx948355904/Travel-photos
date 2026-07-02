@@ -1,5 +1,6 @@
 package com.photomap.config;
 
+import com.photomap.common.CurrentUser;
 import com.photomap.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,7 +18,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -44,16 +44,14 @@ public class WebSecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
+                .requestMatchers("/ws/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/locations/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/photos/**").permitAll()
                 .requestMatchers("/api/cos/credential").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/cos/upload").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/locations").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/api/locations/**").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/locations/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/locations/**/photos").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/photos/**").authenticated()
+                .requestMatchers("/api/locations/**").authenticated()
+                .requestMatchers("/api/photos/**").authenticated()
+                .requestMatchers("/api/search/**").authenticated()
                 .anyRequest().permitAll()
             )
             .addFilterBefore(new JwtAuthenticationFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
@@ -85,21 +83,28 @@ public class WebSecurityConfig {
             if (authHeader != null && authHeader.startsWith("Bearer ")
                     && SecurityContextHolder.getContext().getAuthentication() == null) {
                 String token = authHeader.substring(7);
-                if (jwtUtil.validateToken(token)) {
-                    String username = jwtUtil.getUsernameFromToken(token);
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    username,
-                                    null,
-                                    List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
-                            );
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    request.setAttribute("currentUser", username);
-                } else {
+                if (!jwtUtil.validateToken(token)) {
                     writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, "Login expired");
                     return;
                 }
+
+                Long userId = jwtUtil.getUserIdFromToken(token);
+                if (userId == null) {
+                    writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, "Login expired");
+                    return;
+                }
+
+                String username = jwtUtil.getUsernameFromToken(token);
+                String role = jwtUtil.getRoleFromToken(token);
+                CurrentUser currentUser = new CurrentUser(userId, username, role);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                currentUser,
+                                null,
+                                List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                        );
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                request.setAttribute("currentUser", currentUser);
             }
             filterChain.doFilter(request, response);
         }

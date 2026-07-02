@@ -11,5 +11,8 @@ public class PhotoVO {
     private Integer height;
     private String orientation;
     private String shotDate;
+    private String status;
+    private String caption;
+    private String tags;
     private Integer sortOrder;
 }

@@ -12,10 +12,11 @@ import java.util.List;
 @Mapper
 public interface LocationMapper extends BaseMapper<Location> {
 
-    @Select("SELECT * FROM location WHERE deleted = false " +
+    @Select("SELECT * FROM location WHERE user_id = #{userId} AND deleted = false " +
             "AND longitude BETWEEN #{minLng} AND #{maxLng} " +
             "AND latitude BETWEEN #{minLat} AND #{maxLat}")
-    List<Location> selectByBbox(@Param("minLng") Double minLng,
+    List<Location> selectByBbox(@Param("userId") Long userId,
+                                @Param("minLng") Double minLng,
                                 @Param("minLat") Double minLat,
                                 @Param("maxLng") Double maxLng,
                                 @Param("maxLat") Double maxLat);

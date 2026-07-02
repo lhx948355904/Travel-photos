@@ -13,6 +13,9 @@ public class Photo {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    @TableField("user_id")
+    private Long userId;
+
     @TableField("location_id")
     private Long locationId;
 
@@ -33,6 +36,14 @@ public class Photo {
 
     @TableField("shot_date")
     private LocalDate shotDate;
+
+    private String status;
+
+    @TableField("review_reason")
+    private String reviewReason;
+
+    @TableField("reviewed_at")
+    private LocalDateTime reviewedAt;
 
     @TableField("sort_order")
     private Integer sortOrder;

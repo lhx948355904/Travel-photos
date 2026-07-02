@@ -13,6 +13,9 @@ public class Location {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    @TableField("user_id")
+    private Long userId;
+
     private String name;
     private String description;
     private Double longitude;

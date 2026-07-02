@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button, message, Popconfirm } from 'antd'
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button, Empty, Input, message, Popconfirm, Spin } from "antd";
 import {
   CalendarOutlined,
   CameraOutlined,
@@ -10,121 +10,242 @@ import {
   LoginOutlined,
   LogoutOutlined,
   PlusOutlined,
-} from '@ant-design/icons'
-import MapView from '../../components/MapView/MapView'
-import SearchBox from '../../components/MapView/SearchBox'
-import BlurredCarousel from '../../components/BlurredCarousel'
-import UploadPanel from '../../components/UploadPanel'
-import FullscreenGallery from '../../components/FullscreenGallery'
-import { useAuthStore } from '../../store/useAuthStore'
-import { useMapStore } from '../../store/useMapStore'
-import { getLocations, getLocationDetail, deleteLocation } from '../../api/location'
-import type { Location } from '../../types'
+  SearchOutlined,
+} from "@ant-design/icons";
+import MapView from "../../components/MapView/MapView";
+import SearchBox from "../../components/MapView/SearchBox";
+import BlurredCarousel from "../../components/BlurredCarousel";
+import UploadPanel from "../../components/UploadPanel";
+import FullscreenGallery from "../../components/FullscreenGallery";
+import ActivityPanel from "../../components/ActivityPanel";
+import { useAuthStore } from "../../store/useAuthStore";
+import { useMapStore } from "../../store/useMapStore";
+import { useActivitySocket } from "../../hooks/useActivitySocket";
+import {
+  getLocations,
+  getLocationDetail,
+  deleteLocation,
+} from "../../api/location";
+import { searchPhotos } from "../../api/search";
+import type { Location, SearchPhotoResult } from "../../types";
+import Test from "./Test";
 
 const Home = () => {
-  const navigate = useNavigate()
-  const { isAdmin, logout } = useAuthStore()
-  const { locations, setLocations, selectedLocation, setSelectedLocation } = useMapStore()
+  const navigate = useNavigate();
+  const { user, isLoggedIn, isAdmin, logout } = useAuthStore();
+  const {
+    locations,
+    setLocations,
+    selectedLocation,
+    setSelectedLocation,
+    resetMap,
+  } = useMapStore();
+  const {
+    status,
+    onlineCount,
+    messages: activityMessages,
+    sendActivity,
+  } = useActivitySocket();
 
-  const [uploadOpen, setUploadOpen] = useState(false)
-  const [galleryOpen, setGalleryOpen] = useState(false)
-  const [editingLocation, setEditingLocation] = useState<Location | null>(null)
-  const [clickPosition, setClickPosition] = useState<{ lng: number; lat: number } | null>(null)
-  const [searchPoi, setSearchPoi] = useState<{ name: string; lng: number; lat: number } | null>(null)
-  const [focusPosition, setFocusPosition] = useState<{ name: string; lng: number; lat: number } | null>(null)
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [clickPosition, setClickPosition] = useState<{
+    lng: number;
+    lat: number;
+  } | null>(null);
+  const [searchPoi, setSearchPoi] = useState<{
+    name: string;
+    lng: number;
+    lat: number;
+  } | null>(null);
+  const [focusPosition, setFocusPosition] = useState<{
+    name: string;
+    lng: number;
+    lat: number;
+  } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [photoSearchLoading, setPhotoSearchLoading] = useState(false);
+  const [photoResults, setPhotoResults] = useState<SearchPhotoResult[]>([]);
 
   const totalPhotos = useMemo(
-    () => locations.reduce((sum, location) => sum + (location.photoCount || 0), 0),
-    [locations]
-  )
+    () =>
+      locations.reduce((sum, location) => sum + (location.photoCount || 0), 0),
+    [locations],
+  );
 
   const latestLocation = useMemo(() => {
     return [...locations]
       .filter((location) => location.travelDate)
-      .sort((a, b) => String(b.travelDate).localeCompare(String(a.travelDate)))[0]
-  }, [locations])
+      .sort((a, b) =>
+        String(b.travelDate).localeCompare(String(a.travelDate)),
+      )[0];
+  }, [locations]);
 
-  const focusLabel = searchPoi?.name || latestLocation?.name || '暂无焦点地点'
-  const latestDateLabel = latestLocation?.travelDate || '等待记录'
+  const focusLabel =
+    searchPoi?.name ||
+    latestLocation?.name ||
+    (isLoggedIn ? "暂无焦点地点" : "请先登录");
+  const latestDateLabel = latestLocation?.travelDate || "等待记录";
 
   const fetchLocations = useCallback(async () => {
-    try {
-      const data = await getLocations()
-      setLocations(data)
-    } catch (err: any) {
-      message.error(err.message || '地点列表加载失败')
+    if (!isLoggedIn) {
+      resetMap();
+      setPhotoResults([]);
+      return;
     }
-  }, [setLocations])
+
+    setLocationLoading(true);
+    try {
+      const data = await getLocations();
+      setLocations(data);
+    } catch (err: any) {
+      message.error(err.message || "地点列表加载失败");
+    } finally {
+      setLocationLoading(false);
+    }
+  }, [isLoggedIn, resetMap, setLocations]);
 
   useEffect(() => {
-    fetchLocations()
-  }, [fetchLocations])
+    fetchLocations();
+  }, [fetchLocations]);
 
-  const handleMarkerClick = useCallback(async (location: Location) => {
-    try {
-      const detail = await getLocationDetail(location.id)
-      setSelectedLocation(detail)
-      setGalleryOpen(true)
-    } catch (err: any) {
-      message.error(err.message || '地点详情加载失败')
+  const handleMarkerClick = useCallback(
+    async (location: Location) => {
+      if (!isLoggedIn) {
+        navigate("/login");
+        return;
+      }
+
+      try {
+        const detail = await getLocationDetail(location.id);
+        setSelectedLocation(detail);
+        setGalleryOpen(true);
+        sendActivity(`${user?.username || "A user"} viewed ${location.name}`);
+      } catch (err: any) {
+        message.error(err.message || "地点详情加载失败");
+      }
+    },
+    [isLoggedIn, navigate, sendActivity, setSelectedLocation, user?.username],
+  );
+
+  const handleMapClick = useCallback(
+    (lng: number, lat: number) => {
+      if (!isLoggedIn) {
+        navigate("/login");
+        return;
+      }
+      setClickPosition({ lng, lat });
+      setSearchPoi(null);
+      setEditingLocation(null);
+      setUploadOpen(true);
+    },
+    [isLoggedIn, navigate],
+  );
+
+  const handleSearchSelect = useCallback(
+    (name: string, lng: number, lat: number) => {
+      setSearchPoi({ name, lng, lat });
+      setClickPosition({ lng, lat });
+      setFocusPosition({ name, lng, lat });
+      sendActivity(`A visitor searched ${name}`);
+    },
+    [sendActivity],
+  );
+
+  const handlePhotoSearch = async (query: string) => {
+    const keyword = query.trim();
+    if (!keyword) return;
+    if (!isLoggedIn) {
+      navigate("/login");
+      return;
     }
-  }, [setSelectedLocation])
 
-  const handleMapClick = useCallback((lng: number, lat: number) => {
-    if (!isAdmin) return
-    setClickPosition({ lng, lat })
-    setSearchPoi(null)
-    setEditingLocation(null)
-    setUploadOpen(true)
-  }, [isAdmin])
+    setPhotoSearchLoading(true);
+    try {
+      const results = await searchPhotos(keyword);
+      setPhotoResults(results);
+      if (results.length === 0) {
+        message.info("没有找到匹配的照片");
+      }
+    } catch (err: any) {
+      message.error(err.message || "照片搜索失败");
+    } finally {
+      setPhotoSearchLoading(false);
+    }
+  };
 
-  const handleSearchSelect = useCallback((name: string, lng: number, lat: number) => {
-    setSearchPoi({ name, lng, lat })
-    setClickPosition({ lng, lat })
-    setFocusPosition({ name, lng, lat })
-  }, [])
+  const openSearchResult = async (result: SearchPhotoResult) => {
+    try {
+      const detail = await getLocationDetail(result.locationId);
+      setSelectedLocation(detail);
+      setGalleryOpen(true);
+    } catch (err: any) {
+      message.error(err.message || "照片详情加载失败");
+    }
+  };
 
   const handleCloseGallery = () => {
-    setGalleryOpen(false)
-    setSelectedLocation(null)
-  }
+    setGalleryOpen(false);
+    setSelectedLocation(null);
+  };
 
   const handleEditLocation = () => {
-    if (!selectedLocation) return
-    setEditingLocation(selectedLocation)
-    setClickPosition({ lng: selectedLocation.longitude, lat: selectedLocation.latitude })
-    setGalleryOpen(false)
-    setUploadOpen(true)
-  }
+    if (!selectedLocation) return;
+    setEditingLocation(selectedLocation);
+    setClickPosition({
+      lng: selectedLocation.longitude,
+      lat: selectedLocation.latitude,
+    });
+    setGalleryOpen(false);
+    setUploadOpen(true);
+  };
 
   const handleDeleteLocation = async () => {
-    if (!selectedLocation) return
+    if (!selectedLocation) return;
     try {
-      await deleteLocation(selectedLocation.id)
-      message.success('删除成功')
-      setGalleryOpen(false)
-      setSelectedLocation(null)
-      fetchLocations()
+      await deleteLocation(selectedLocation.id);
+      message.success("删除成功");
+      setGalleryOpen(false);
+      setSelectedLocation(null);
+      fetchLocations();
     } catch (err: any) {
-      message.error(err.message || '删除失败')
+      message.error(err.message || "删除失败");
     }
-  }
+  };
 
   const handleUploadSuccess = () => {
-    fetchLocations()
-  }
+    fetchLocations();
+    sendActivity(`${user?.username || "A user"} updated their travel map`);
+  };
 
   const handleCloseUpload = () => {
-    setUploadOpen(false)
-    setEditingLocation(null)
-    setClickPosition(null)
-  }
+    setUploadOpen(false);
+    setEditingLocation(null);
+    setClickPosition(null);
+  };
 
   const openCreatePanel = () => {
-    setEditingLocation(null)
-    setClickPosition(searchPoi ? { lng: searchPoi.lng, lat: searchPoi.lat } : null)
-    setUploadOpen(true)
-  }
+    if (!isLoggedIn) {
+      navigate("/login");
+      return;
+    }
+
+    setEditingLocation(null);
+    setClickPosition(
+      searchPoi ? { lng: searchPoi.lng, lat: searchPoi.lat } : null,
+    );
+    setUploadOpen(true);
+  };
+
+  const handleLogout = () => {
+    logout();
+    resetMap();
+    setPhotoResults([]);
+    setGalleryOpen(false);
+    setUploadOpen(false);
+    message.success("已退出登录");
+  };
 
   return (
     <div className="home-page">
@@ -148,27 +269,31 @@ const Home = () => {
           </div>
 
           <div className="home-actions">
-            <span className={isAdmin ? 'mode-pill admin' : 'mode-pill'}>
-              {isAdmin ? '管理员' : '访客'}
+            <span className={isLoggedIn ? "mode-pill admin" : "mode-pill"}>
+              {isLoggedIn
+                ? isAdmin
+                  ? "管理员"
+                  : user?.username || "用户"
+                : "游客"}
             </span>
-            {isAdmin ? (
+            {isLoggedIn ? (
               <Button
                 type="primary"
                 icon={<LogoutOutlined />}
-                onClick={logout}
+                onClick={handleLogout}
                 className="header-action"
               >
-                退出登录
+                退出
               </Button>
             ) : (
               <Button
                 type="primary"
                 ghost
                 icon={<LoginOutlined />}
-                onClick={() => navigate('/login')}
+                onClick={() => navigate("/login")}
                 className="header-action"
               >
-                管理员登录
+                登录 / 注册
               </Button>
             )}
           </div>
@@ -177,9 +302,13 @@ const Home = () => {
         <section className="home-workspace">
           <aside className="story-panel" aria-label="旅行地图概览">
             <div className="panel-block">
-              <span className="panel-label">空间相册</span>
+              <span className="panel-label">私有相册</span>
               <h2>地点、照片、时间</h2>
-              <p>{isAdmin ? '管理视图已开启' : '公开浏览视图'}</p>
+              <p>
+                {isLoggedIn
+                  ? "只展示当前账号的上传内容"
+                  : "登录后查看并上传你的旅行照片"}
+              </p>
             </div>
 
             <div className="metric-grid">
@@ -210,17 +339,59 @@ const Home = () => {
               )}
             </div>
 
-            {isAdmin && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={openCreatePanel}
-                className="panel-create"
-                block
-              >
-                新增地点
-              </Button>
-            )}
+            <div className="semantic-search-panel">
+              <span className="panel-label">照片语义搜索</span>
+              <Input.Search
+                allowClear
+                enterButton={<SearchOutlined />}
+                placeholder="搜索海边日落、寺庙、花园..."
+                loading={photoSearchLoading}
+                disabled={!isLoggedIn}
+                onSearch={handlePhotoSearch}
+              />
+              <div className="photo-search-results">
+                {photoSearchLoading && <Spin size="small" />}
+                {!photoSearchLoading &&
+                  photoResults.map((result) => (
+                    <button
+                      key={result.photoId}
+                      type="button"
+                      className="photo-result"
+                      onClick={() => openSearchResult(result)}
+                    >
+                      <img
+                        src={result.thumbUrl || result.url}
+                        alt={result.locationName}
+                      />
+                      <span>
+                        <strong>{result.locationName}</strong>
+                        <small>
+                          {result.caption ||
+                            result.tags ||
+                            result.shotDate ||
+                            "匹配照片"}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+
+            <ActivityPanel
+              status={status}
+              onlineCount={onlineCount}
+              messages={activityMessages}
+            />
+
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={openCreatePanel}
+              className="panel-create"
+              block
+            >
+              {isLoggedIn ? "新增地点" : "登录后上传"}
+            </Button>
           </aside>
 
           <section className="map-stage" aria-label="旅行地图">
@@ -231,17 +402,41 @@ const Home = () => {
               </div>
               <div className="map-stage-status">
                 <EnvironmentOutlined />
-                <span>{locations.length > 0 ? `${locations.length} 个地点` : '暂无地点'}</span>
+                <span>
+                  {locations.length > 0
+                    ? `${locations.length} 个地点`
+                    : "暂无地点"}
+                </span>
               </div>
             </div>
 
             <div className="map-shell">
+              {locationLoading && (
+                <div className="map-loading">
+                  <Spin />
+                </div>
+              )}
+              {!isLoggedIn && (
+                <div className="private-empty-state">
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="登录后查看你的私有旅行地图"
+                  />
+                  <Button
+                    type="primary"
+                    icon={<LoginOutlined />}
+                    onClick={() => navigate("/login")}
+                  >
+                    登录 / 注册
+                  </Button>
+                </div>
+              )}
               <MapView
                 locations={locations}
                 onMarkerClick={handleMarkerClick}
                 onMapClick={handleMapClick}
                 focusPosition={focusPosition}
-                isAdmin={isAdmin}
+                canCreateLocation={isLoggedIn}
               />
             </div>
           </section>
@@ -264,9 +459,13 @@ const Home = () => {
         onClose={handleCloseGallery}
       />
 
-      {galleryOpen && isAdmin && selectedLocation && (
+      {galleryOpen && isLoggedIn && selectedLocation && (
         <div className="gallery-admin-actions">
-          <Button type="primary" icon={<EditOutlined />} onClick={handleEditLocation}>
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={handleEditLocation}
+          >
             编辑地点
           </Button>
           <Popconfirm
@@ -283,8 +482,9 @@ const Home = () => {
           </Popconfirm>
         </div>
       )}
+      <Test />
     </div>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;

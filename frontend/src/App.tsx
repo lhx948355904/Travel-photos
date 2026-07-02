@@ -1,9 +1,10 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Home from './pages/Home'
-import Login from './pages/Login'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Test from "./pages/Home/Test";
 
-const ICP_BEIAN_URL = 'https://beian.miit.gov.cn/'
-const ICP_BEIAN_NUMBER = '京ICP备2026036429号'
+const ICP_BEIAN_URL = "https://beian.miit.gov.cn/";
+const ICP_BEIAN_NUMBER = "京ICP备2026036429号";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/test" element={<Test />} />
       </Routes>
       <a
         className="icp-footer-link"
@@ -22,7 +24,7 @@ function App() {
         {ICP_BEIAN_NUMBER}
       </a>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

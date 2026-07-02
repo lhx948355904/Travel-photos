@@ -1,13 +1,27 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>旅行摄影地图 - Travel Photo Map</title>
-  </head>
-  <body>
+</head>
+
+<body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-  </body>
+</body>
+<script>
+    const obj = {
+        modelId: 123,
+        name: 'abc',
+        id: 123456,
+    };
+    let str = 'asset_asw{modelId}xxx_asw{name}xdw_shg_shtr_{id}_ahgstr';
+    console.log(str.replace(/\{([a-zA-Z]*)\}/g, function (match, v) {
+        return obj[v]
+    }))
+</script>
+
 </html>

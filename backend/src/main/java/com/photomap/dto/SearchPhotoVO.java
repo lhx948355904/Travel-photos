@@ -3,15 +3,14 @@ package com.photomap.dto;
 import lombok.Data;
 
 @Data
-public class PhotoDTO {
-    private String cosKey;
+public class SearchPhotoVO {
+    private Long photoId;
+    private Long locationId;
+    private String locationName;
     private String url;
     private String thumbUrl;
-    private Integer width;
-    private Integer height;
-    private String orientation;
-    private Long fileSize;
     private String shotDate;
     private String caption;
     private String tags;
+    private Double score;
 }

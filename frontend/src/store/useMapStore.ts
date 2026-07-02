@@ -9,6 +9,7 @@ interface MapState {
   addLocation: (location: Location) => void
   updateLocation: (location: Location) => void
   removeLocation: (id: number) => void
+  resetMap: () => void
 }
 
 export const useMapStore = create<MapState>((set) => ({
@@ -26,4 +27,5 @@ export const useMapStore = create<MapState>((set) => ({
     set((state) => ({
       locations: state.locations.filter((l) => l.id !== id),
     })),
+  resetMap: () => set({ locations: [], selectedLocation: null }),
 }))
