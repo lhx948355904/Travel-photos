@@ -7,8 +7,6 @@ import {
   Form,
   DatePicker,
   message,
-  Row,
-  Col,
 } from 'antd'
 import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons'
 import type { UploadProps } from 'antd/es/upload'
@@ -26,7 +24,7 @@ interface UploadPanelProps {
   initialLat?: number
   initialName?: string
   editingLocation?: Location | null
-  onSuccess: () => void
+  onSuccess: (location?: { name: string; lng: number; lat: number }) => void
 }
 
 interface UploadItem {
@@ -47,6 +45,24 @@ interface UploadItem {
 }
 
 const createUploadId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+const isHeicFile = (file: File) => {
+  const name = file.name.toLowerCase()
+  const type = file.type.toLowerCase()
+  return name.endsWith('.heic') || name.endsWith('.heif') || type.includes('heic') || type.includes('heif')
+}
+
+const convertHeicToJpeg = async (file: File) => {
+  const { default: heic2any } = await import('heic2any')
+  const result = await heic2any({
+    blob: file,
+    toType: 'image/jpeg',
+    quality: 0.9,
+  })
+  const blob = Array.isArray(result) ? result[0] : result
+  const convertedName = file.name.replace(/\.(heic|heif)$/i, '.jpg')
+  return new File([blob], convertedName, { type: 'image/jpeg' })
+}
 
 const readImageMeta = (file: File): Promise<{ width: number; height: number }> => {
   return new Promise((resolve) => {
@@ -79,7 +95,12 @@ const UploadPanel = ({
   const [coverIndex, setCoverIndex] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [coordinateSource, setCoordinateSource] = useState('待选择地图坐标')
   const uploadItemsRef = useRef<UploadItem[]>([])
+  const watchedLongitude = Form.useWatch('longitude', form)
+  const watchedLatitude = Form.useWatch('latitude', form)
+  const hasCoordinate =
+    Number.isFinite(Number(watchedLongitude)) && Number.isFinite(Number(watchedLatitude))
 
   useEffect(() => {
     uploadItemsRef.current = uploadItems
@@ -102,6 +123,7 @@ const UploadPanel = ({
         travelDate: editingLocation.travelDate ? dayjs(editingLocation.travelDate) : undefined,
         description: editingLocation.description,
       })
+      setCoordinateSource('已记录地图坐标')
       return
     }
 
@@ -112,6 +134,13 @@ const UploadPanel = ({
       travelDate: undefined,
       description: undefined,
     })
+    setCoordinateSource(
+      initialLng !== undefined && initialLat !== undefined
+        ? initialName
+          ? '已使用搜索地点坐标'
+          : '已记录地图点击坐标'
+        : '待选择地图坐标',
+    )
   }, [editingLocation, form, initialLat, initialLng, initialName, open])
 
   const updateUploadItem = (id: string, patch: Partial<UploadItem>) => {
@@ -147,7 +176,7 @@ const UploadPanel = ({
     }
   }
 
-  const addUploadFile = (file: File) => {
+  const addUploadFile = (file: File, exifSource: File = file) => {
     const id = createUploadId()
     const previewUrl = URL.createObjectURL(file)
 
@@ -161,7 +190,7 @@ const UploadPanel = ({
       },
     ])
 
-    void readExif(file).then((exifData) => {
+    void readExif(exifSource).then((exifData) => {
       updateUploadItem(id, { shotDate: exifData.shotDate })
 
       if (exifData.longitude && exifData.latitude && !form.getFieldValue('longitude')) {
@@ -169,6 +198,7 @@ const UploadPanel = ({
           longitude: exifData.longitude,
           latitude: exifData.latitude,
         })
+        setCoordinateSource('已从照片 EXIF 读取坐标')
       }
 
       if (exifData.shotDate && !form.getFieldValue('travelDate')) {
@@ -179,8 +209,19 @@ const UploadPanel = ({
     void uploadSingleItem(id, file)
   }
 
+  const prepareAndAddUploadFile = async (file: File) => {
+    if (!isHeicFile(file)) {
+      addUploadFile(file)
+      return
+    }
+
+    const convertedFile = await convertHeicToJpeg(file)
+    addUploadFile(convertedFile, file)
+  }
+
   const beforeUpload = (file: File) => {
-    const isImage = file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.heic')
+    const lowerName = file.name.toLowerCase()
+    const isImage = file.type.startsWith('image/') || lowerName.endsWith('.heic') || lowerName.endsWith('.heif')
     if (!isImage) {
       message.error('只能上传图片文件')
       return Upload.LIST_IGNORE
@@ -192,7 +233,9 @@ const UploadPanel = ({
       return Upload.LIST_IGNORE
     }
 
-    addUploadFile(file)
+    void prepareAndAddUploadFile(file).catch((err: any) => {
+      message.error(err.message || 'HEIC 照片转换失败，请换一张 JPG/PNG 照片')
+    })
     return Upload.LIST_IGNORE
   }
 
@@ -272,9 +315,16 @@ const UploadPanel = ({
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
+    const longitude = Number(values.longitude)
+    const latitude = Number(values.latitude)
 
     if (uploadItems.some((item) => item.uploading)) {
       message.warning('照片仍在上传，请稍候')
+      return
+    }
+
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+      message.error('请先在地图上选择地点，或上传带 GPS 的照片')
       return
     }
 
@@ -302,8 +352,8 @@ const UploadPanel = ({
       const payload = {
         name: values.name,
         description: values.description,
-        longitude: Number(values.longitude),
-        latitude: Number(values.latitude),
+        longitude,
+        latitude,
         travelDate: values.travelDate?.format('YYYY-MM-DD'),
       }
 
@@ -322,7 +372,11 @@ const UploadPanel = ({
         message.success('创建成功')
       }
 
-      onSuccess()
+      onSuccess({
+        name: values.name,
+        lng: longitude,
+        lat: latitude,
+      })
       handleClose()
     } catch (err: any) {
       message.error(err.message || '提交失败')
@@ -344,7 +398,7 @@ const UploadPanel = ({
     beforeUpload,
     showUploadList: false,
     multiple: true,
-    accept: 'image/*,.heic',
+    accept: 'image/*,.heic,.heif',
   }
 
   const hasPendingFiles = uploadItems.some((item) => !item.url && !item.uploading)
@@ -354,7 +408,10 @@ const UploadPanel = ({
       title={editingLocation ? '编辑地点' : '添加地点'}
       open={open}
       onCancel={handleClose}
+      mask={false}
       width={720}
+      className="upload-location-modal"
+      rootClassName="upload-location-modal-root"
       footer={[
         <Button key="cancel" onClick={handleClose}>
           取消
@@ -374,18 +431,29 @@ const UploadPanel = ({
           <Input placeholder="请输入地点名称" />
         </Form.Item>
 
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item name="longitude" label="经度" rules={[{ required: true, message: '请输入经度' }]}>
-              <Input type="number" placeholder="经度" />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item name="latitude" label="纬度" rules={[{ required: true, message: '请输入纬度' }]}>
-              <Input type="number" placeholder="纬度" />
-            </Form.Item>
-          </Col>
-        </Row>
+        <Form.Item
+          name="longitude"
+          hidden
+          rules={[{ required: true, message: '请先在地图上选择地点，或上传带 GPS 的照片' }]}
+        >
+          <Input />
+        </Form.Item>
+        <Form.Item
+          name="latitude"
+          hidden
+          rules={[{ required: true, message: '请先在地图上选择地点，或上传带 GPS 的照片' }]}
+        >
+          <Input />
+        </Form.Item>
+
+        <div className={`coordinate-status ${hasCoordinate ? 'ready' : 'pending'}`}>
+          <span>{hasCoordinate ? coordinateSource : '待选择地图坐标'}</span>
+          <small>
+            {hasCoordinate
+              ? '坐标会随地点一起保存，用于地图回显。'
+              : '点击地图、选择搜索地点，或上传带 GPS 的照片后会自动记录。'}
+          </small>
+        </div>
 
         <Form.Item name="travelDate" label="旅行日期">
           <DatePicker style={{ width: '100%' }} placeholder="选择日期" />

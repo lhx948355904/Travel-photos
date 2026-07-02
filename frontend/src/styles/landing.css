@@ -21,6 +21,11 @@
 }
 
 .landing-background {
+  --bg-shift-x: 0px;
+  --bg-shift-y: 0px;
+  --bg-focus-x: 50%;
+  --bg-focus-y: 50%;
+
   position: fixed;
   inset: 0;
   z-index: 0;
@@ -32,9 +37,10 @@
 .landing-background__image,
 .landing-background__tiles {
   position: absolute;
-  inset: -34px;
-  filter: blur(22px) saturate(0.98) contrast(1.04);
-  transform: scale(1.06);
+  inset: -46px;
+  filter: blur(10px) saturate(1.04) contrast(1.06);
+  transform: translate3d(var(--bg-shift-x), var(--bg-shift-y), 0) scale(1.045);
+  will-change: transform;
 }
 
 .landing-background__image {
@@ -43,11 +49,12 @@
   background-size: cover;
   transition:
     opacity 420ms var(--ease),
-    transform 5200ms linear;
+    transform 220ms var(--ease);
 }
 
 .landing-background__tiles {
   z-index: 1;
+  transition: transform 220ms var(--ease);
 }
 
 .landing-background__tile {
@@ -60,7 +67,7 @@
     opacity 760ms var(--ease),
     filter 760ms var(--ease),
     transform 760ms var(--ease);
-  filter: blur(4px);
+  filter: blur(1.5px);
   will-change: opacity, transform, filter;
 }
 
@@ -75,8 +82,8 @@
   inset: 0;
   z-index: 2;
   background:
-    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.5), transparent 34%),
-    linear-gradient(90deg, rgba(245, 245, 247, 0.74), rgba(245, 245, 247, 0.48) 48%, rgba(245, 245, 247, 0.66));
+    radial-gradient(circle at var(--bg-focus-x) var(--bg-focus-y), rgba(255, 255, 255, 0.34), transparent 28%),
+    linear-gradient(90deg, rgba(245, 245, 247, 0.66), rgba(245, 245, 247, 0.38) 48%, rgba(245, 245, 247, 0.58));
 }
 
 .landing-scroll-deck {
@@ -820,6 +827,7 @@ body:has(.landing-page) .icp-footer-link:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .landing-background__image,
+  .landing-background__tiles,
   .landing-background__tile,
   .profile-card,
   .profile-card__kicker,

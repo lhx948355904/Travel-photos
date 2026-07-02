@@ -42,5 +42,13 @@ cos:
   region: ${COS_REGION:}
   cdn-domain: ${COS_CDN_DOMAIN:}
 
+jwt:
+  secret: ${JWT_SECRET:travel-photo-map-jwt-secret-key-2026-change-me-in-production}
+  expire-seconds: ${JWT_EXPIRE_SECONDS:86400}
+
+admin:
+  username: ${ADMIN_USERNAME:${SITE_OWNER_USERNAME:admin}}
+  password-hash: ${ADMIN_PASSWORD_HASH:}
+
 site:
-  owner-username: ${SITE_OWNER_USERNAME:admin}
+  owner-username: ${SITE_OWNER_USERNAME:${ADMIN_USERNAME:admin}}

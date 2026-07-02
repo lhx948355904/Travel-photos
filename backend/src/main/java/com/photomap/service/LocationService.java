@@ -20,6 +20,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,6 +30,7 @@ public class LocationService {
     private final LocationMapper locationMapper;
     private final PhotoMapper photoMapper;
     private final PhotoEmbeddingService photoEmbeddingService;
+    private final CosStsService cosStsService;
 
     public List<LocationVO> listLocations(Long userId, String bbox) {
         List<Location> locations;
@@ -49,7 +51,10 @@ public class LocationService {
             locations = selectUserLocations(userId);
         }
 
-        return locations.stream().map(location -> toLocationVO(userId, location)).collect(Collectors.toList());
+        return locations.stream()
+                .map(location -> toLocationVO(userId, location))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     public LocationDetailVO getLocationDetail(Long userId, Long id) {
@@ -64,7 +69,7 @@ public class LocationService {
         vo.setTravelDate(location.getTravelDate() != null ? location.getTravelDate().toString() : null);
         vo.setCoverPhotoId(location.getCoverPhotoId());
 
-        List<Photo> photos = photoMapper.selectByLocationId(userId, id);
+        List<Photo> photos = selectExistingPhotos(userId, id);
         vo.setPhotos(photos.stream().map(this::toPhotoVO).collect(Collectors.toList()));
 
         return vo;
@@ -199,31 +204,59 @@ public class LocationService {
     }
 
     private LocationVO toLocationVO(Long userId, Location location) {
+        List<Photo> photos = selectExistingPhotos(userId, location.getId());
+        if (photos.isEmpty()) {
+            return null;
+        }
+
         LocationVO vo = new LocationVO();
         vo.setId(location.getId());
         vo.setName(location.getName());
         vo.setLongitude(location.getLongitude());
         vo.setLatitude(location.getLatitude());
         vo.setTravelDate(location.getTravelDate() != null ? location.getTravelDate().toString() : null);
+        vo.setPhotoCount(photos.size());
 
-        int count = photoMapper.countByLocationId(userId, location.getId());
-        vo.setPhotoCount(count);
-
-        if (location.getCoverPhotoId() != null) {
-            Photo cover = photoMapper.selectOwnedById(userId, location.getCoverPhotoId());
-            if (cover != null && "approved".equals(cover.getStatus())) {
-                vo.setCoverThumbUrl(cover.getThumbUrl());
-            }
-        }
+        Photo cover = resolveCoverPhoto(location, photos);
+        vo.setCoverThumbUrl(resolvePhotoUrl(cover));
 
         return vo;
     }
 
+    private List<Photo> selectExistingPhotos(Long userId, Long locationId) {
+        return photoMapper.selectByLocationId(userId, locationId).stream()
+                .filter(this::photoObjectExists)
+                .collect(Collectors.toList());
+    }
+
+    private boolean photoObjectExists(Photo photo) {
+        return photo != null
+                && StringUtils.hasText(photo.getCosKey())
+                && cosStsService.objectExists(photo.getCosKey());
+    }
+
+    private Photo resolveCoverPhoto(Location location, List<Photo> photos) {
+        if (location.getCoverPhotoId() != null) {
+            return photos.stream()
+                    .filter(photo -> location.getCoverPhotoId().equals(photo.getId()))
+                    .findFirst()
+                    .orElse(photos.get(0));
+        }
+        return photos.get(0);
+    }
+
+    private String resolvePhotoUrl(Photo photo) {
+        String fallbackUrl = StringUtils.hasText(photo.getUrl()) ? photo.getUrl() : photo.getThumbUrl();
+        return cosStsService.resolvePublicUrl(photo.getCosKey(), fallbackUrl);
+    }
+
     private PhotoVO toPhotoVO(Photo photo) {
+        String photoUrl = resolvePhotoUrl(photo);
+
         PhotoVO vo = new PhotoVO();
         vo.setId(photo.getId());
-        vo.setUrl(photo.getUrl());
-        vo.setThumbUrl(photo.getThumbUrl());
+        vo.setUrl(photoUrl);
+        vo.setThumbUrl(photoUrl);
         vo.setWidth(photo.getWidth());
         vo.setHeight(photo.getHeight());
         vo.setOrientation(photo.getOrientation());

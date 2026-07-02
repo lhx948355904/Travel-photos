@@ -6,11 +6,9 @@ export function getOrientation(width: number, height: number): Orientation {
   return 'square'
 }
 
-export function getThumbnailUrl(url: string, size: number = 600): string {
+export function getThumbnailUrl(url: string, _size: number = 600): string {
   if (!url) return ''
-  // 如果 URL 已经包含查询参数，使用 & 连接
-  const separator = url.includes('?') ? '&' : '?'
-  return `${url}${separator}imageMogr2/thumbnail/${size}x/format/webp`
+  return url
 }
 
 export function getMarkerThumbnailUrl(url: string): string {

@@ -8,6 +8,7 @@ import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
 import com.qcloud.cos.auth.COSCredentials;
+import com.qcloud.cos.model.CannedAccessControlList;
 import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.model.PutObjectRequest;
 import com.qcloud.cos.region.Region;
@@ -89,9 +90,7 @@ public class CosStsService {
         String format = validateImage(file);
 
         String key = createObjectKey(userId, file.getOriginalFilename(), format);
-        COSCredentials credentials = new BasicCOSCredentials(cosProperties.getSecretId(), cosProperties.getSecretKey());
-        ClientConfig clientConfig = new ClientConfig(new Region(cosProperties.getRegion()));
-        COSClient cosClient = new COSClient(credentials, clientConfig);
+        COSClient cosClient = createClient();
 
         try {
             ObjectMetadata metadata = new ObjectMetadata();
@@ -100,12 +99,14 @@ public class CosStsService {
                 metadata.setContentType(file.getContentType());
             }
 
-            cosClient.putObject(new PutObjectRequest(
+            PutObjectRequest putObjectRequest = new PutObjectRequest(
                     cosProperties.getBucket(),
                     key,
                     file.getInputStream(),
                     metadata
-            ));
+            );
+            putObjectRequest.setCannedAcl(CannedAccessControlList.PublicRead);
+            cosClient.putObject(putObjectRequest);
 
             CosUploadResponse response = new CosUploadResponse();
             response.setCosKey(key);
@@ -124,13 +125,50 @@ public class CosStsService {
         }
     }
 
+    public boolean objectExists(String key) {
+        if (!StringUtils.hasText(key)) {
+            return false;
+        }
+        if (!hasCosConfig()) {
+            log.warn("Skip COS object check because COS config is incomplete");
+            return true;
+        }
+
+        COSClient cosClient = createClient();
+        try {
+            return cosClient.doesObjectExist(cosProperties.getBucket(), key);
+        } catch (Exception e) {
+            log.warn("Failed to check COS object existence, key={}", key, e);
+            return true;
+        } finally {
+            cosClient.shutdown();
+        }
+    }
+
+    public String resolvePublicUrl(String key, String fallbackUrl) {
+        if (!StringUtils.hasText(key) || !hasCosConfig()) {
+            return fallbackUrl;
+        }
+        return buildPublicUrl(key);
+    }
+
     private void validateCosConfig() {
-        if (!StringUtils.hasText(cosProperties.getSecretId())
-                || !StringUtils.hasText(cosProperties.getSecretKey())
-                || !StringUtils.hasText(cosProperties.getBucket())
-                || !StringUtils.hasText(cosProperties.getRegion())) {
+        if (!hasCosConfig()) {
             throw new BusinessException("COS 配置不完整，请检查 .env 或环境变量");
         }
+    }
+
+    private boolean hasCosConfig() {
+        return StringUtils.hasText(cosProperties.getSecretId())
+                && StringUtils.hasText(cosProperties.getSecretKey())
+                && StringUtils.hasText(cosProperties.getBucket())
+                && StringUtils.hasText(cosProperties.getRegion());
+    }
+
+    private COSClient createClient() {
+        COSCredentials credentials = new BasicCOSCredentials(cosProperties.getSecretId(), cosProperties.getSecretKey());
+        ClientConfig clientConfig = new ClientConfig(new Region(cosProperties.getRegion()));
+        return new COSClient(credentials, clientConfig);
     }
 
     private String validateImage(MultipartFile file) {

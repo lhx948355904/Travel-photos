@@ -30,18 +30,31 @@ const MapView = ({
     const thumbUrl = getMarkerThumbnailUrl(location.coverThumbUrl || '')
     const div = document.createElement('div')
     div.className = 'photo-marker'
+    const appendFallback = () => {
+      div.replaceChildren()
+      const fallback = document.createElement('span')
+      fallback.className = 'photo-marker-fallback'
+      fallback.textContent = location.name.slice(0, 1) || 'T'
+      div.appendChild(fallback)
+    }
 
     if (thumbUrl) {
       const image = document.createElement('img')
       image.src = thumbUrl
       image.alt = location.name
       image.loading = 'lazy'
+      image.onerror = () => {
+        const originalUrl = thumbUrl.split('?')[0]
+        if (originalUrl && originalUrl !== image.src) {
+          image.onerror = appendFallback
+          image.src = originalUrl
+          return
+        }
+        appendFallback()
+      }
       div.appendChild(image)
     } else {
-      const fallback = document.createElement('span')
-      fallback.className = 'photo-marker-fallback'
-      fallback.textContent = location.name.slice(0, 1) || 'T'
-      div.appendChild(fallback)
+      appendFallback()
     }
 
     if (location.photoCount > 1) {
@@ -125,9 +138,12 @@ const MapView = ({
       title: focusPosition.name,
       anchor: 'bottom-center',
     })
+    marker.on('click', () => {
+      onMapClick?.(focusPosition.lng, focusPosition.lat)
+    })
     marker.setMap(map)
     searchMarkerRef.current = marker
-  }, [map, isReady, focusPosition])
+  }, [map, isReady, focusPosition, onMapClick])
 
   useEffect(() => {
     if (!map || !isReady || !canCreateLocation) return

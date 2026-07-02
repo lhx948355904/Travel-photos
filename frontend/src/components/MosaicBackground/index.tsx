@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties } from "react"
 
 interface MosaicBackgroundProps {
@@ -40,6 +40,7 @@ const getTilePosition = (value: number, count: number) => {
 }
 
 const MosaicBackground = ({ images }: MosaicBackgroundProps) => {
+  const backgroundRef = useRef<HTMLDivElement | null>(null)
   const safeImages = useMemo(() => normalizeImages(images), [images])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [nextIndex, setNextIndex] = useState(safeImages.length > 1 ? 1 : 0)
@@ -74,11 +75,62 @@ const MosaicBackground = ({ images }: MosaicBackgroundProps) => {
     }
   }, [currentIndex, safeImages.length])
 
+  useEffect(() => {
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    let rafId = 0
+
+    const setBackgroundMotion = (shiftX: number, shiftY: number, focusX: number, focusY: number) => {
+      const element = backgroundRef.current
+      if (!element) return
+
+      element.style.setProperty("--bg-shift-x", `${shiftX.toFixed(2)}px`)
+      element.style.setProperty("--bg-shift-y", `${shiftY.toFixed(2)}px`)
+      element.style.setProperty("--bg-focus-x", `${focusX.toFixed(2)}%`)
+      element.style.setProperty("--bg-focus-y", `${focusY.toFixed(2)}%`)
+    }
+
+    const resetBackgroundMotion = () => {
+      window.cancelAnimationFrame(rafId)
+      setBackgroundMotion(0, 0, 50, 50)
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (motionQuery.matches || event.pointerType === "touch") return
+
+      const viewportWidth = Math.max(window.innerWidth, 1)
+      const viewportHeight = Math.max(window.innerHeight, 1)
+      const normalizedX = event.clientX / viewportWidth
+      const normalizedY = event.clientY / viewportHeight
+
+      window.cancelAnimationFrame(rafId)
+      rafId = window.requestAnimationFrame(() => {
+        setBackgroundMotion(
+          (0.5 - normalizedX) * 24,
+          (0.5 - normalizedY) * 18,
+          normalizedX * 100,
+          normalizedY * 100,
+        )
+      })
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("blur", resetBackgroundMotion)
+    document.addEventListener("mouseleave", resetBackgroundMotion)
+
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("blur", resetBackgroundMotion)
+      document.removeEventListener("mouseleave", resetBackgroundMotion)
+    }
+  }, [])
+
   const currentImage = safeImages[currentIndex] || FALLBACK_IMAGE
   const nextImage = safeImages[nextIndex] || currentImage
 
   return (
     <div
+      ref={backgroundRef}
       className={`landing-background${isTransitioning ? " landing-background--active" : ""}`}
       aria-hidden="true"
     >

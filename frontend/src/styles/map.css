@@ -191,7 +191,6 @@ body:has(.home-page) {
 
 .header-action.ant-btn-primary,
 .panel-create.ant-btn-primary,
-.map-empty-state .ant-btn-primary,
 .semantic-search-panel .ant-input-search .ant-input-group-addon .ant-btn {
   color: #fff;
   border-color: var(--map-action);
@@ -201,7 +200,6 @@ body:has(.home-page) {
 
 .header-action.ant-btn-primary:hover,
 .panel-create.ant-btn-primary:hover,
-.map-empty-state .ant-btn-primary:hover,
 .semantic-search-panel .ant-input-search .ant-input-group-addon .ant-btn:hover {
   color: #fff !important;
   border-color: var(--map-action-hover) !important;
@@ -344,12 +342,44 @@ body:has(.home-page) {
 
 .semantic-search-panel .ant-input-search .ant-input,
 .semantic-search-panel .ant-input-search .ant-input-group-addon .ant-btn {
-  height: 38px;
+  height: 40px;
   font-size: 14px;
 }
 
+.semantic-search-panel .ant-input-search .ant-input-group {
+  display: flex;
+}
+
 .semantic-search-panel .ant-input-search .ant-input {
+  min-width: 0;
+  border-color: var(--map-line);
+  border-radius: 4px 0 0 4px;
   color: var(--map-ink);
+}
+
+.semantic-search-panel .ant-input-search .ant-input:hover,
+.semantic-search-panel .ant-input-search .ant-input:focus {
+  border-color: rgba(0, 102, 204, 0.45);
+  box-shadow: none;
+}
+
+.semantic-search-panel .ant-input-search .ant-input::placeholder {
+  color: #7b8088;
+  font-weight: 500;
+}
+
+.semantic-search-panel .ant-input-search .ant-input-group-addon {
+  width: 44px;
+  background: transparent;
+}
+
+.semantic-search-panel .ant-input-search .ant-input-group-addon .ant-btn {
+  width: 44px;
+  border-radius: 0 4px 4px 0 !important;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .photo-search-results {
@@ -358,6 +388,14 @@ body:has(.home-page) {
   display: grid;
   gap: 8px;
   overflow: auto;
+}
+
+.photo-search-empty {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  color: var(--map-muted);
+  font-size: 13px;
 }
 
 .photo-result {
@@ -590,8 +628,7 @@ body:has(.home-page) {
   overflow: hidden;
 }
 
-.map-loading,
-.map-empty-state {
+.map-loading {
   position: absolute;
   inset: 0;
   z-index: 4;
@@ -601,16 +638,6 @@ body:has(.home-page) {
   gap: 12px;
   pointer-events: none;
   background: rgba(245, 245, 247, 0.7);
-}
-
-.map-empty-state {
-  pointer-events: auto;
-  background: rgba(250, 250, 252, 0.88);
-}
-
-.map-empty-state .ant-empty-description {
-  color: var(--map-muted);
-  font-weight: 400;
 }
 
 .search-box {
@@ -824,6 +851,194 @@ body:has(.home-page) {
   border-radius: 8px;
 }
 
+.upload-location-modal-root {
+  --map-action: #0066cc;
+  --map-action-hover: #0071e3;
+  --map-ink: #1d1d1f;
+  --map-soft: #f5f5f7;
+}
+
+.upload-location-modal-root .ant-modal-wrap {
+  pointer-events: none;
+}
+
+.upload-location-modal {
+  pointer-events: auto;
+}
+
+.upload-location-modal .ant-modal-content {
+  overflow: hidden;
+  border: 1px solid rgba(29, 29, 31, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 42px rgba(29, 29, 31, 0.18);
+}
+
+.upload-location-modal .ant-modal-header {
+  padding: 22px 24px 12px;
+  border-bottom: 1px solid rgba(29, 29, 31, 0.1);
+  border-radius: 12px 12px 0 0;
+  background: #fff;
+}
+
+.upload-location-modal .ant-modal-title {
+  color: var(--map-ink);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.upload-location-modal .ant-modal-close {
+  top: 16px;
+  color: rgba(29, 29, 31, 0.54);
+}
+
+.upload-location-modal .ant-modal-body {
+  max-height: min(68vh, 640px);
+  overflow: auto;
+  padding: 20px 24px 4px;
+  background: #fff;
+}
+
+.upload-location-modal .ant-modal-footer {
+  margin-top: 0;
+  padding: 14px 24px 20px;
+  border-top: 1px solid rgba(29, 29, 31, 0.08);
+  background: #fff;
+}
+
+.upload-location-modal .ant-form-item {
+  margin-bottom: 18px;
+}
+
+.upload-location-modal .coordinate-status {
+  margin: 0 0 18px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(29, 29, 31, 0.12);
+  border-radius: 8px;
+  background: var(--map-soft);
+}
+
+.upload-location-modal .coordinate-status.ready {
+  border-color: rgba(31, 122, 77, 0.22);
+  background: rgba(31, 122, 77, 0.06);
+}
+
+.upload-location-modal .coordinate-status.pending {
+  border-color: rgba(0, 102, 204, 0.18);
+  background: rgba(0, 102, 204, 0.05);
+}
+
+.upload-location-modal .coordinate-status span {
+  color: var(--map-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.upload-location-modal .coordinate-status small {
+  color: rgba(29, 29, 31, 0.62);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.upload-location-modal .ant-form-item-label {
+  padding-bottom: 6px;
+}
+
+.upload-location-modal .ant-form-item-label > label {
+  color: var(--map-ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.upload-location-modal .ant-input,
+.upload-location-modal .ant-picker,
+.upload-location-modal textarea.ant-input {
+  min-height: 40px;
+  border: 1px solid rgba(29, 29, 31, 0.14);
+  border-radius: 8px;
+  color: var(--map-ink);
+  background: #fff;
+  box-shadow: none;
+}
+
+.upload-location-modal textarea.ant-input {
+  min-height: 92px;
+}
+
+.upload-location-modal .ant-input:hover,
+.upload-location-modal .ant-picker:hover,
+.upload-location-modal textarea.ant-input:hover {
+  border-color: rgba(0, 102, 204, 0.42);
+}
+
+.upload-location-modal .ant-input:focus,
+.upload-location-modal .ant-input-focused,
+.upload-location-modal .ant-picker-focused,
+.upload-location-modal textarea.ant-input:focus {
+  border-color: var(--map-action);
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.12);
+}
+
+.upload-location-modal .ant-input::placeholder,
+.upload-location-modal textarea.ant-input::placeholder {
+  color: rgba(29, 29, 31, 0.36);
+}
+
+.upload-location-modal .upload-preview-list {
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.upload-location-modal .upload-preview-item,
+.upload-location-modal .upload-add {
+  width: 108px;
+  height: 108px;
+  border-radius: 8px;
+}
+
+.upload-location-modal .upload-preview-item {
+  border: 1px solid rgba(29, 29, 31, 0.1);
+  background: var(--map-soft);
+}
+
+.upload-location-modal .upload-preview-item.selected {
+  border-color: var(--map-action);
+}
+
+.upload-location-modal .upload-add {
+  border: 1px dashed rgba(0, 102, 204, 0.46);
+  color: var(--map-action);
+  background: rgba(0, 102, 204, 0.06);
+}
+
+.upload-location-modal .upload-add:hover {
+  border-color: var(--map-action);
+  color: var(--map-action);
+  background: rgba(0, 102, 204, 0.1);
+}
+
+.upload-location-modal .ant-btn {
+  min-height: 36px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.upload-location-modal .ant-btn-primary {
+  color: #fff;
+  border-color: var(--map-action);
+  background: var(--map-action);
+}
+
+.upload-location-modal .ant-btn-primary:hover,
+.upload-location-modal .ant-btn-primary:focus-visible {
+  color: #fff !important;
+  border-color: var(--map-action-hover) !important;
+  background: var(--map-action-hover) !important;
+}
+
 body:has(.home-page) .icp-footer-link {
   left: auto;
   right: 18px;
@@ -839,6 +1054,64 @@ body:has(.home-page) .icp-footer-link {
 
 body:has(.home-page) .icp-footer-link:hover {
   color: var(--map-action);
+}
+
+body:has(.login-page) {
+  background: #f5f5f7;
+}
+
+.login-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--map-ink, #1d1d1f);
+  background: #f5f5f7;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+.login-card {
+  width: min(420px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(29, 29, 31, 0.12);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.login-card-heading {
+  margin-bottom: 22px;
+}
+
+.login-card-heading span {
+  display: block;
+  color: #0066cc;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.login-card-heading h1 {
+  margin-top: 6px;
+  color: #1d1d1f;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.login-card-heading p {
+  margin-top: 8px;
+  color: #5f6368;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.login-card .ant-input-affix-wrapper {
+  border-radius: 8px;
+}
+
+.login-card .ant-btn-primary {
+  border-color: #0066cc;
+  background: #0066cc;
 }
 
 @media (max-width: 1120px) {
