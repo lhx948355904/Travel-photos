@@ -8,7 +8,7 @@ import type { Location } from "../../types";
 import { parseProfileMarkdown } from "../../utils/profileMarkdown";
 
 const profile = parseProfileMarkdown(profileMarkdown);
-const fallbackBackgroundImages = ["/landing-archive.png"];
+const fallbackGalleryImages = ["/landing-archive.png"];
 
 const collectBackgroundImages = (locations: Location[]) => {
   const imageUrls = locations.flatMap((location) => [
@@ -23,8 +23,8 @@ const collectBackgroundImages = (locations: Location[]) => {
 
 const Home = () => {
   const navigate = useNavigate();
-  const [backgroundImages, setBackgroundImages] = useState<string[]>(
-    fallbackBackgroundImages,
+  const [galleryImages, setGalleryImages] = useState<string[]>(
+    fallbackGalleryImages,
   );
 
   const enterMap = useCallback(() => {
@@ -39,12 +39,12 @@ const Home = () => {
         if (!isMounted) return;
 
         const uploadedImages = collectBackgroundImages(locations);
-        setBackgroundImages(
-          uploadedImages.length > 0 ? uploadedImages : fallbackBackgroundImages,
+        setGalleryImages(
+          uploadedImages.length > 0 ? uploadedImages : fallbackGalleryImages,
         );
       })
       .catch(() => {
-        if (isMounted) setBackgroundImages(fallbackBackgroundImages);
+        if (isMounted) setGalleryImages(fallbackGalleryImages);
       });
 
     return () => {
@@ -53,17 +53,13 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="landing-page">
-      <MosaicBackground images={backgroundImages} />
-
-      <main className="landing-scroll-deck">
-        <div className="landing-sticky-frame">
-          <section className="landing-intro-frame">
-            <ProfileCard profile={profile} onEnterMap={enterMap} />
-          </section>
-        </div>
-      </main>
-    </div>
+    <main className="landing-page">
+      <MosaicBackground images={galleryImages} />
+      <ProfileCard
+        profile={profile}
+        onEnterMap={enterMap}
+      />
+    </main>
   );
 };
 
