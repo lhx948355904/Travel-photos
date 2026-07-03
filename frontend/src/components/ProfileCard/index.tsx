@@ -96,11 +96,51 @@ const ProfileCard = ({ profile, onEnterMap }: ProfileCardProps) => {
         </div>
 
         <aside className="profile-visual-panel" aria-label="地图相册预览">
+          {/* 背景主图 */}
           <img src="/landing-archive.png" alt="旅行照片地图工作台预览" />
+
+          {/* 浮动照片层 */}
+          <div className="profile-visual-panel__photos" aria-hidden="true">
+            <div className="profile-visual-panel__float-photo">
+              <img src="/landing-archive.png" alt="" />
+            </div>
+            <div className="profile-visual-panel__float-photo">
+              <img src="/landing-archive.png" alt="" />
+            </div>
+            <div className="profile-visual-panel__float-photo">
+              <img src="/landing-archive.png" alt="" />
+            </div>
+          </div>
+
+          {/* 粒子/尘埃效果 */}
+          <div className="profile-visual-panel__particles" aria-hidden="true">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="profile-visual-panel__particle"
+                style={{
+                  animationDuration: `var(--pdur, ${7 + i}s)`,
+                  animationDelay: `var(--pdel, ${2 + i * 0.5}s)`,
+                  width: `var(--psize, ${2 + (i % 3) * 0.5}px)`,
+                  height: `var(--psize, ${2 + (i % 3) * 0.5}px)`,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* 镜头光斑 */}
+          <div className="profile-visual-panel__lens-flare" aria-hidden="true" />
+
+          {/* 边缘光晕 */}
+          <div className="profile-visual-panel__edge-glow" aria-hidden="true" />
+
+          {/* 底部文字说明 */}
           <div className="profile-visual-panel__caption">
             <span>Spatial Archive</span>
             <strong>用地点、照片和时间线整理真实旅行记忆。</strong>
           </div>
+
+          {/* 技术栈标签 */}
           <div className="profile-visual-panel__stack" aria-label="项目技术栈">
             {projectHighlights.map((item, index) => (
               <span key={item} style={{ "--i": index } as CSSProperties}>

@@ -22,52 +22,80 @@
   pointer-events: none;
 }
 
-.landing-background__image,
-.landing-background__tiles {
+/* ====== 丝滑双图层交叉淡入淡出 ====== */
+.landing-background__slide {
   position: absolute;
   inset: -54px;
-  filter: saturate(1.02) contrast(1.06);
-  transform: translate3d(var(--bg-shift-x), var(--bg-shift-y), 0) scale(1.06);
-  will-change: transform;
-}
-
-.landing-background__image {
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
-  opacity: 0.58;
-  transition: opacity 420ms var(--ease), transform 220ms var(--ease);
-  animation: landingImageBreath 18s var(--ease) infinite alternate;
+  /* 尽量减少 filter 干扰，保持图片原汁原味 */
+  filter: saturate(1.02) contrast(1.01);
+  /* 缩放最小化，保证像素级清晰度 */
+  transform: translate3d(var(--bg-shift-x), var(--bg-shift-y), 0) scale(1.02);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 
-.landing-background__tiles {
+/* ---- 前层（当前主图） ---- */
+.landing-background__slide--front {
+  /* 默认在上层 */
   z-index: 1;
-  transition: transform 220ms var(--ease);
+  /* 高不透明度 —— 图片清晰通透 */
+  opacity: 0.85;
+  /* 平滑过渡：opacity 和 z-index 切换时使用统一曲线 */
+  transition:
+    opacity 1600ms cubic-bezier(0.4, 0, 0.2, 1),
+    z-index 0ms linear;
+  /* Ken Burns 微距漂移 —— 让静态照片有生命力 */
+  animation: kenBurnsIdle 24s ease-in-out infinite alternate;
 }
 
-.landing-background__tile {
-  position: absolute;
+/* 交叉淡入时：前层退到下层并淡出 */
+.landing-background--crossfade .landing-background__slide--front {
+  z-index: 0;
   opacity: 0;
-  background-repeat: no-repeat;
-  transform: scale(1.045) rotate(0.001deg);
-  transform-origin: center;
-  transition: opacity 760ms var(--ease), transform 760ms var(--ease);
-  will-change: opacity, transform;
 }
 
-.landing-background--active .landing-background__tile {
-  opacity: 0.5;
-  transform: scale(1);
+/* ---- 后层（预备下一张） ---- */
+.landing-background__slide--back {
+  /* 默认在下层，不可见 */
+  z-index: 0;
+  opacity: 0;
+  /* 更平滑的缓入曲线，新图出现时有「浮现」感 */
+  transition:
+    opacity 1600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    z-index 0ms linear;
+}
+
+/* 交叉淡入时：后层升到上层并淡入 */
+.landing-background--crossfade .landing-background__slide--back {
+  z-index: 1;
+  opacity: 0.85;
 }
 
 .landing-background__veil {
   position: absolute;
   inset: 0;
   z-index: 2;
+  /* 大幅降低蒙层 —— 让背景图更清晰地透出来 */
   background:
-    radial-gradient(circle at var(--bg-focus-x) var(--bg-focus-y), rgba(255, 255, 255, 0.1), transparent 30%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.48) 54%, rgba(255, 255, 255, 0.78)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.94) 82%);
+    radial-gradient(
+      circle at var(--bg-focus-x) var(--bg-focus-y),
+      rgba(255, 255, 255, 0.04),
+      transparent 30%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.55),
+      rgba(255, 255, 255, 0.25) 54%,
+      rgba(255, 255, 255, 0.45)
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.18),
+      rgba(255, 255, 255, 0.58) 82%
+    );
 }
 
 .landing-scroll-deck {
@@ -80,7 +108,7 @@
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 48px 32px 72px;
+  padding: 38px 32px 72px;
 }
 
 .landing-intro-frame {
@@ -94,7 +122,7 @@
 }
 
 .profile-card__header {
-  min-height: 560px;
+  min-height: 520px;
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(340px, 0.8fr);
   align-items: center;
@@ -125,13 +153,12 @@
 
 .profile-card h1 {
   margin: 18px 0 0;
-  max-width: 10ch;
+  max-width: 11ch;
   color: var(--ink);
   font-size: clamp(48px, 7vw, 86px);
   font-weight: 340;
   line-height: 1;
   letter-spacing: -0.02em;
-  text-wrap: balance;
   animation: textLift 560ms 120ms var(--ease) both;
 }
 
@@ -164,7 +191,9 @@
   color: var(--ink);
   background: var(--surface-soft);
   text-decoration: none;
-  transition: background 180ms var(--ease), transform 180ms var(--ease);
+  transition:
+    background 180ms var(--ease),
+    transform 180ms var(--ease);
   animation: chipPop 420ms calc(220ms + var(--i, 0) * 55ms) var(--ease) both;
 }
 
@@ -223,7 +252,12 @@
   position: absolute;
   inset: 0;
   transform: translateX(-115%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.22),
+    transparent
+  );
   transition: transform 320ms var(--ease);
 }
 
@@ -256,7 +290,132 @@
   animation: visualPanelIn 720ms 160ms var(--ease) both;
 }
 
-.profile-visual-panel img {
+/* ====== 浮动照片层 ====== */
+.profile-visual-panel__photos {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.profile-visual-panel__float-photo {
+  position: absolute;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.profile-visual-panel__float-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-visual-panel__float-photo:nth-child(1) {
+  width: 28%;
+  aspect-ratio: 4/3;
+  top: 12%;
+  left: 6%;
+  transform: rotate(-7deg) translateY(20px);
+  animation: floatPhotoIn1 800ms 1200ms var(--ease) both,
+             floatPhotoFloat1 7s 2200ms var(--ease) infinite alternate;
+}
+
+.profile-visual-panel__float-photo:nth-child(2) {
+  width: 24%;
+  aspect-ratio: 3/4;
+  top: 42%;
+  right: 10%;
+  transform: rotate(5deg) translateY(20px);
+  animation: floatPhotoIn2 800ms 1500ms var(--ease) both,
+             floatPhotoFloat2 8s 2500ms var(--ease) infinite alternate;
+}
+
+.profile-visual-panel__float-photo:nth-child(3) {
+  width: 20%;
+  aspect-ratio: 1/1;
+  bottom: 22%;
+  left: 18%;
+  transform: rotate(9deg) translateY(20px);
+  animation: floatPhotoIn3 800ms 1800ms var(--ease) both,
+             floatPhotoFloat3 6.5s 2800ms var(--ease) infinite alternate;
+}
+
+/* ====== 光晕/镜头光斑 ====== */
+.profile-visual-panel__lens-flare {
+  position: absolute;
+  z-index: 5;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 240, 200, 0.2) 30%,
+    transparent 70%
+  );
+  filter: blur(8px);
+  top: 15%;
+  right: 25%;
+  animation: lensFlareAppear 2000ms 2600ms ease both,
+             lensFlareDrift 5s 2800ms ease-in-out infinite alternate;
+}
+
+/* ====== 粒子/尘埃效果 ====== */
+.profile-visual-panel__particles {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.profile-visual-panel__particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  opacity: 0;
+  animation: particleFloat linear infinite;
+}
+
+.profile-visual-panel__particle:nth-child(1) { left: 15%; top: 80%; --pdur: 7s; --pdel: 2s; --psize: 2px; }
+.profile-visual-panel__particle:nth-child(2) { left: 72%; top: 65%; --pdur: 9s; --pdel: 3.5s; --psize: 3px; }
+.profile-visual-panel__particle:nth-child(3) { left: 40%; top: 85%; --pdur: 8s; --pdel: 1.5s; --psize: 2px; }
+.profile-visual-panel__particle:nth-child(4) { left: 85%; top: 45%; --pdur: 11s; --pdel: 4s; --psize: 2.5px; }
+.profile-visual-panel__particle:nth-child(5) { left: 25%; top: 50%; --pdur: 6.5s; --pdel: 5s; --psize: 2px; }
+.profile-visual-panel__particle:nth-child(6) { left: 60%; top: 75%; --pdur: 10s; --pdel: 2.8s; --psize: 3px; }
+
+/* ====== 边缘渐变光效 ====== */
+.profile-visual-panel__edge-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  background: radial-gradient(
+      ellipse 100% 60% at 50% 0%,
+      rgba(255, 255, 255, 0.06),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 80% 50% at 100% 50%,
+      rgba(255, 240, 210, 0.04),
+      transparent 55%
+    );
+  animation: edgeGlowPulse 6s 3000ms ease-in-out infinite alternate;
+}
+
+.profile-visual-panel > img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -275,7 +434,12 @@
   z-index: 2;
   width: 30%;
   transform: rotate(12deg);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.32),
+    transparent
+  );
   animation: archiveScan 6.8s 1.1s var(--ease) infinite;
   pointer-events: none;
 }
@@ -475,9 +639,8 @@
 .personal-profile {
   display: grid;
   gap: var(--space-xl);
-  padding: var(--space-xxl);
+  padding: var(--space-xxl) 0;
   border-radius: var(--radius-lg);
-  background: var(--canvas);
   animation: panelReveal 560ms 420ms var(--ease) both;
 }
 
@@ -532,7 +695,9 @@
   background: var(--surface-soft);
   text-decoration: none;
   animation: listItemIn 420ms calc(460ms + var(--i, 0) * 60ms) var(--ease) both;
-  transition: background 180ms var(--ease), transform 180ms var(--ease);
+  transition:
+    background 180ms var(--ease),
+    transform 180ms var(--ease);
 }
 
 .personal-contact-card:nth-child(1) {
@@ -581,7 +746,7 @@
 
 .personal-profile__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.72fr);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
   gap: var(--space-lg);
   align-items: start;
 }
@@ -747,13 +912,15 @@ body:has(.landing-page) .icp-footer-link {
   }
 }
 
-@keyframes landingImageBreath {
+/* ====== Ken Burns 微距缓慢漂移（静态展示时） ====== */
+@keyframes kenBurnsIdle {
   from {
-    transform: translate3d(var(--bg-shift-x), var(--bg-shift-y), 0) scale(1.06);
+    transform: translate3d(var(--bg-shift-x), var(--bg-shift-y), 0) scale(1.02)
+              translate(-5px, -4px);
   }
-
   to {
-    transform: translate3d(calc(var(--bg-shift-x) - 10px), calc(var(--bg-shift-y) - 8px), 0) scale(1.1);
+    transform: translate3d(var(--bg-shift-x), var(--bg-shift-y), 0) scale(1.05)
+              translate(6px, 5px);
   }
 }
 
@@ -849,6 +1016,91 @@ body:has(.landing-page) .icp-footer-link {
   }
 }
 
+/* ====== 浮动照片动画 ====== */
+@keyframes floatPhotoIn1 {
+  to {
+    opacity: 0.92;
+    transform: rotate(-7deg) translateY(0);
+  }
+}
+
+@keyframes floatPhotoIn2 {
+  to {
+    opacity: 0.86;
+    transform: rotate(5deg) translateY(0);
+  }
+}
+
+@keyframes floatPhotoIn3 {
+  to {
+    opacity: 0.78;
+    transform: rotate(9deg) translateY(0);
+  }
+}
+
+@keyframes floatPhotoFloat1 {
+  from { transform: rotate(-7deg) translate(0, 0); }
+  to   { transform: rotate(-4deg) translate(6px, -8px); }
+}
+
+@keyframes floatPhotoFloat2 {
+  from { transform: rotate(5deg) translate(0, 0); }
+  to   { transform: rotate(8deg) translate(-5px, -10px); }
+}
+
+@keyframes floatPhotoFloat3 {
+  from { transform: rotate(9deg) translate(0, 0); }
+  to   { transform: rotate(6deg) translate(8px, -6px); }
+}
+
+/* ====== 镜头光斑动画 ====== */
+@keyframes lensFlareAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+}
+
+@keyframes lensFlareDrift {
+  from {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.65;
+  }
+  to {
+    transform: translate(-30px, 20px) scale(1.3);
+    opacity: 0.35;
+  }
+}
+
+/* ====== 粒子漂浮动画 ====== */
+@keyframes particleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  10% {
+    opacity: 0.6;
+  transform: translateY(calc(var(--psize, 2px) * -10)) scale(1);
+  }
+  90% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(calc(var(--psize, 2px) * -80)) scale(0.3);
+  }
+}
+
+/* ====== 边缘光晕脉冲 ====== */
+@keyframes edgeGlowPulse {
+  from { opacity: 0.5; }
+  to   { opacity: 1; }
+}
+
 @keyframes panelReveal {
   from {
     opacity: 0;
@@ -874,9 +1126,7 @@ body:has(.landing-page) .icp-footer-link {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-background__image,
-  .landing-background__tiles,
-  .landing-background__tile,
+  .landing-background__slide,
   .profile-card__header,
   .profile-card__kicker,
   .profile-card h1,
@@ -885,7 +1135,7 @@ body:has(.landing-page) .icp-footer-link {
   .profile-actions,
   .enter-map-button::after,
   .profile-visual-panel,
-  .profile-visual-panel img,
+  .profile-visual-panel > img,
   .profile-visual-panel::before,
   .profile-visual-panel__caption,
   .profile-visual-panel__stack span,
@@ -898,9 +1148,8 @@ body:has(.landing-page) .icp-footer-link {
   .personal-work-item,
   .personal-skill-list p {
     animation: none !important;
-    transition: none !important;
+    transition: opacity 0ms !important, auto !important;
     transform: none !important;
     filter: none !important;
     clip-path: none !important;
   }
-}
