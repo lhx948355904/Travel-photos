@@ -14,6 +14,13 @@
   --landing-radius: 24px;
   --landing-radius-sm: 12px;
   --landing-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --landing-stem: #497a2d;
+  --landing-stem-soft: #9bcf68;
+  --landing-leaf: #6aa343;
+  --landing-leaf-light: #d5f2a3;
+  --landing-flower: #fbfff2;
+  --landing-flower-soft: #ecf7d5;
+  --landing-flower-core: #f5c95b;
 
   min-height: 100dvh;
   position: relative;
@@ -242,6 +249,271 @@
   font-size: 15px;
   font-weight: 800;
   line-height: 1.2;
+}
+
+.landing-title-stage {
+  position: relative;
+  display: inline-grid;
+  margin: -14px -20px -10px -14px;
+  padding: 14px 20px 10px 14px;
+  isolation: isolate;
+}
+
+.landing-title-stage h1 {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-title-botanical {
+  position: absolute;
+  inset: -15% -17% -22% -24%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.landing-title-sprout {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 48px;
+  height: 112px;
+  opacity: 0;
+  filter: blur(5px) saturate(0.92);
+  transform: translate(-50%, -50%) rotate(calc(var(--r) - 5deg)) scale(0.82, 0);
+  transform-origin: 50% 100%;
+  transition:
+    transform 640ms var(--landing-ease),
+    opacity 360ms var(--landing-ease),
+    filter 420ms var(--landing-ease);
+  transition-delay: 0ms, 160ms, 80ms;
+  will-change: transform, opacity, filter;
+}
+
+.landing-title-stage--grow .landing-title-sprout {
+  opacity: 1;
+  filter: blur(0) saturate(1.08);
+  transform: translate(-50%, -50%) rotate(var(--r)) scale(var(--s));
+  transition-delay: var(--delay), var(--delay), var(--delay);
+}
+
+.landing-title-sprout__body {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-origin: 50% 100%;
+  transform: translate3d(0, 0, 0) rotate(0deg);
+}
+
+.landing-title-stage--grow .landing-title-sprout__body {
+  animation: titleSproutSway 3200ms calc(var(--delay) + 620ms) ease-in-out
+    infinite alternate;
+}
+
+.landing-title-sprout--grass {
+  width: 54px;
+  height: 86px;
+}
+
+.landing-title-sprout--leaf {
+  width: 46px;
+  height: 94px;
+}
+
+.landing-title-sprout__stem {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72),
+    var(--landing-stem-soft) 18%,
+    var(--landing-stem) 78%
+  );
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.36),
+    0 8px 18px rgba(22, 51, 0, 0.16);
+  transform: translateX(-50%);
+}
+
+.landing-title-sprout__stem::before,
+.landing-title-sprout__stem::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  width: 3px;
+  height: 72%;
+  border-radius: 999px;
+  background: inherit;
+  opacity: 0.86;
+  transform-origin: 50% 100%;
+}
+
+.landing-title-sprout__stem::before {
+  left: -10px;
+  transform: rotate(-12deg);
+}
+
+.landing-title-sprout__stem::after {
+  right: -10px;
+  transform: rotate(13deg);
+}
+
+.landing-title-sprout--bloom .landing-title-sprout__stem::before,
+.landing-title-sprout--bloom .landing-title-sprout__stem::after,
+.landing-title-sprout--leaf .landing-title-sprout__stem::before,
+.landing-title-sprout--leaf .landing-title-sprout__stem::after {
+  height: 36%;
+  opacity: 0.62;
+}
+
+.landing-title-sprout__leaf {
+  position: absolute;
+  bottom: 42%;
+  left: 50%;
+  width: 36px;
+  height: 17px;
+  border-radius: 100% 0 100% 0;
+  opacity: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.75),
+    var(--landing-leaf-light) 20%,
+    var(--landing-leaf) 76%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    0 6px 14px rgba(22, 51, 0, 0.14);
+  transform: var(--leaf-transform) scale(0);
+  transform-origin: 0 50%;
+  transition:
+    transform 420ms var(--landing-ease),
+    opacity 300ms var(--landing-ease);
+  transition-delay: 0ms, 120ms;
+}
+
+.landing-title-sprout__leaf::after {
+  content: "";
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 50%;
+  height: 1px;
+  border-radius: 999px;
+  background: rgba(22, 51, 0, 0.2);
+  transform: rotate(-8deg);
+}
+
+.landing-title-sprout__leaf--a {
+  --leaf-transform: translateX(-2px) rotate(-36deg);
+}
+
+.landing-title-sprout__leaf--b {
+  --leaf-transform: translateX(-100%) rotate(216deg);
+
+  bottom: 56%;
+  transform-origin: 100% 50%;
+}
+
+.landing-title-stage--grow .landing-title-sprout__leaf {
+  opacity: 0.98;
+  transform: var(--leaf-transform) scale(1);
+  transition-delay: calc(var(--delay) + 180ms), calc(var(--delay) + 180ms);
+}
+
+.landing-title-sprout__flower {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  opacity: 0;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      var(--landing-flower-core) 0 17%,
+      transparent 18%
+    ),
+    radial-gradient(
+      ellipse at 50% 4%,
+      var(--landing-flower) 0 25%,
+      transparent 26%
+    ),
+    radial-gradient(ellipse at 94% 42%, #f4ffd7 0 26%, transparent 27%),
+    radial-gradient(
+      ellipse at 64% 96%,
+      var(--landing-flower) 0 25%,
+      transparent 26%
+    ),
+    radial-gradient(
+      ellipse at 8% 58%,
+      var(--landing-flower-soft) 0 27%,
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(255, 255, 255, 0.86),
+      transparent 62%
+    );
+  filter: drop-shadow(0 8px 12px rgba(22, 51, 0, 0.16));
+  transform: translate(-50%, 8px) scale(0);
+  transition:
+    transform 440ms var(--landing-ease),
+    opacity 320ms var(--landing-ease),
+    filter 360ms var(--landing-ease);
+  transition-delay: 0ms, 140ms, 80ms;
+  transform-origin: 50% 58%;
+}
+
+.landing-title-sprout--grass .landing-title-sprout__flower {
+  display: none;
+}
+
+.landing-title-sprout--grass .landing-title-sprout__leaf {
+  width: 44px;
+  height: 12px;
+  bottom: 26%;
+}
+
+.landing-title-sprout--grass .landing-title-sprout__leaf--b {
+  bottom: 42%;
+}
+
+.landing-title-sprout--leaf .landing-title-sprout__flower {
+  top: 4px;
+  width: 15px;
+  height: 15px;
+  background:
+    radial-gradient(circle at 50% 50%, #f2ca53 0 35%, transparent 36%),
+    radial-gradient(circle at 50% 10%, #faffea 0 26%, transparent 27%),
+    radial-gradient(circle at 88% 50%, #e6f6bd 0 28%, transparent 29%),
+    radial-gradient(circle at 50% 88%, #faffea 0 26%, transparent 27%),
+    radial-gradient(circle at 12% 50%, #e6f6bd 0 28%, transparent 29%);
+}
+
+.landing-title-stage--grow
+  .landing-title-sprout--bloom
+  .landing-title-sprout__flower {
+  opacity: 0.96;
+  filter: drop-shadow(0 10px 16px rgba(22, 51, 0, 0.18));
+  transform: translate(-50%, 0) scale(1);
+  transition-delay:
+    calc(var(--delay) + 340ms), calc(var(--delay) + 340ms),
+    calc(var(--delay) + 340ms);
+}
+
+.landing-title-stage--grow
+  .landing-title-sprout--leaf
+  .landing-title-sprout__flower {
+  opacity: 0.9;
+  transform: translate(-50%, 0) scale(1);
+  transition-delay:
+    calc(var(--delay) + 260ms), calc(var(--delay) + 260ms),
+    calc(var(--delay) + 260ms);
 }
 
 .landing-hero h1,
@@ -1150,6 +1422,16 @@ body:has(.landing-page) .icp-footer-link:focus-visible {
   }
 }
 
+@keyframes titleSproutSway {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  to {
+    transform: translate3d(var(--dx), var(--dy), 0) rotate(var(--sway));
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .landing-page {
     --landing-ink: #f5f8ef;
@@ -1161,6 +1443,13 @@ body:has(.landing-page) .icp-footer-link:focus-visible {
     --landing-sage-strong: #293523;
     --landing-line: rgba(245, 248, 239, 0.16);
     --landing-shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
+    --landing-stem: #81c859;
+    --landing-stem-soft: #d6f8a1;
+    --landing-leaf: #9fe870;
+    --landing-leaf-light: #eefcc4;
+    --landing-flower: #f8fff0;
+    --landing-flower-soft: #dff4c5;
+    --landing-flower-core: #f6d76d;
 
     background:
       radial-gradient(
@@ -1272,6 +1561,35 @@ body:has(.landing-page) .icp-footer-link:focus-visible {
     padding: 42px 0 36px;
   }
 
+  .landing-title-stage {
+    margin: -10px -10px -8px;
+    padding: 10px;
+  }
+
+  .landing-title-botanical {
+    inset: -18% -14% -16% 0;
+  }
+
+  .landing-title-sprout {
+    width: 38px;
+    height: 84px;
+  }
+
+  .landing-title-sprout--grass {
+    width: 44px;
+    height: 68px;
+  }
+
+  .landing-title-sprout__flower {
+    width: 20px;
+    height: 20px;
+  }
+
+  .landing-title-sprout__leaf {
+    width: 28px;
+    height: 12px;
+  }
+
   .landing-hero h1 {
     max-width: 8.5ch;
     font-size: clamp(48px, 15vw, 68px);
@@ -1328,5 +1646,30 @@ body:has(.landing-page) .icp-footer-link:focus-visible {
     transform: none !important;
     translate: none !important;
     clip-path: none !important;
+  }
+
+  .landing-title-stage--grow .landing-title-sprout {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: translate(-50%, -50%) rotate(var(--r)) scale(var(--s)) !important;
+  }
+
+  .landing-title-stage--grow .landing-title-sprout__leaf {
+    opacity: 0.96 !important;
+    transform: var(--leaf-transform) scale(1) !important;
+  }
+
+  .landing-title-stage--grow
+    .landing-title-sprout--bloom
+    .landing-title-sprout__flower {
+    opacity: 0.94 !important;
+    transform: translate(-50%, 0) scale(1) !important;
+  }
+
+  .landing-title-stage--grow
+    .landing-title-sprout--leaf
+    .landing-title-sprout__flower {
+    opacity: 0.9 !important;
+    transform: translate(-50%, 0) scale(1) !important;
   }
 }

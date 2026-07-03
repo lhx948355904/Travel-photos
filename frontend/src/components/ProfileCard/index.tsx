@@ -13,6 +13,7 @@ import {
   PictureOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
+import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { ProfileContent } from "../../types/home";
 
@@ -36,6 +37,105 @@ const floatLandscapeImages = [
 ];
 
 const productStack = ["React 18", "高德地图", "PostgreSQL", "腾讯云 COS"];
+
+interface TitleSprout {
+  tone: "bloom" | "grass" | "leaf";
+  style: CSSProperties;
+}
+
+const titleSprouts: TitleSprout[] = [
+  {
+    tone: "grass",
+    style: {
+      "--x": "15%",
+      "--y": "78%",
+      "--r": "-20deg",
+      "--s": "1",
+      "--delay": "0ms",
+      "--dx": "-2px",
+      "--dy": "-4px",
+      "--sway": "4deg",
+    } as CSSProperties,
+  },
+  {
+    tone: "bloom",
+    style: {
+      "--x": "10%",
+      "--y": "18%",
+      "--r": "-18deg",
+      "--s": "0.9",
+      "--delay": "70ms",
+      "--dx": "2px",
+      "--dy": "-5px",
+      "--sway": "5deg",
+    } as CSSProperties,
+  },
+  {
+    tone: "leaf",
+    style: {
+      "--x": "30%",
+      "--y": "2%",
+      "--r": "-4deg",
+      "--s": "0.74",
+      "--delay": "140ms",
+      "--dx": "1px",
+      "--dy": "-3px",
+      "--sway": "4deg",
+    } as CSSProperties,
+  },
+  {
+    tone: "bloom",
+    style: {
+      "--x": "64%",
+      "--y": "0%",
+      "--r": "14deg",
+      "--s": "0.84",
+      "--delay": "190ms",
+      "--dx": "-2px",
+      "--dy": "-4px",
+      "--sway": "-5deg",
+    } as CSSProperties,
+  },
+  {
+    tone: "leaf",
+    style: {
+      "--x": "83%",
+      "--y": "22%",
+      "--r": "18deg",
+      "--s": "0.98",
+      "--delay": "250ms",
+      "--dx": "-3px",
+      "--dy": "-3px",
+      "--sway": "-6deg",
+    } as CSSProperties,
+  },
+  {
+    tone: "grass",
+    style: {
+      "--x": "81%",
+      "--y": "86%",
+      "--r": "14deg",
+      "--s": "1.08",
+      "--delay": "310ms",
+      "--dx": "2px",
+      "--dy": "-4px",
+      "--sway": "-5deg",
+    } as CSSProperties,
+  },
+  {
+    tone: "bloom",
+    style: {
+      "--x": "56%",
+      "--y": "97%",
+      "--r": "7deg",
+      "--s": "0.78",
+      "--delay": "380ms",
+      "--dx": "-1px",
+      "--dy": "-3px",
+      "--sway": "4deg",
+    } as CSSProperties,
+  },
+];
 
 const productFlows = [
   {
@@ -97,6 +197,9 @@ const getContactHref = (label: string, value: string) => {
 };
 
 const ProfileCard = ({ profile, onEnterMap }: ProfileCardProps) => {
+  const [titleMotionState, setTitleMotionState] = useState<
+    "idle" | "grow" | "retreat"
+  >("idle");
   const featuredSkills = profile.skills.slice(0, 9);
   const visibleContacts = [
     { label: "姓名", value: profile.name },
@@ -130,7 +233,29 @@ const ProfileCard = ({ profile, onEnterMap }: ProfileCardProps) => {
       <section className="landing-hero" id="top">
         <div className="landing-hero__copy">
           <p className="landing-kicker">Travel Photo Map</p>
-          <h1>旅行照片的地图记忆</h1>
+          <div
+            className={`landing-title-stage landing-title-stage--${titleMotionState}`}
+            onPointerEnter={() => setTitleMotionState("grow")}
+            onPointerLeave={() => setTitleMotionState("retreat")}
+          >
+            <div className="landing-title-botanical" aria-hidden="true">
+              {titleSprouts.map((sprout, index) => (
+                <span
+                  key={`${sprout.tone}-${index}`}
+                  className={`landing-title-sprout landing-title-sprout--${sprout.tone}`}
+                  style={sprout.style}
+                >
+                  <span className="landing-title-sprout__body">
+                    <span className="landing-title-sprout__stem" />
+                    <span className="landing-title-sprout__leaf landing-title-sprout__leaf--a" />
+                    <span className="landing-title-sprout__leaf landing-title-sprout__leaf--b" />
+                    <span className="landing-title-sprout__flower" />
+                  </span>
+                </span>
+              ))}
+            </div>
+            <h1>旅行照片的地图记忆</h1>
+          </div>
           <p>用地点、时间和照片组织旅行轨迹，游客可浏览，管理员可维护。</p>
 
           <div className="landing-hero__actions" aria-label="主要操作">
