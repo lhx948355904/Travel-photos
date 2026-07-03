@@ -11,6 +11,26 @@ interface MapViewProps {
   canCreateLocation: boolean
 }
 
+const toFiniteNumber = (value: unknown) => {
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) ? numberValue : null
+}
+
+const isValidLngLat = (longitude: number, latitude: number) => {
+  return longitude >= -180 && longitude <= 180 && latitude >= -90 && latitude <= 90
+}
+
+const getLocationPosition = (location: Location): [number, number] | null => {
+  const longitude = toFiniteNumber(location.longitude)
+  const latitude = toFiniteNumber(location.latitude)
+
+  if (longitude === null || latitude === null || !isValidLngLat(longitude, latitude)) {
+    return null
+  }
+
+  return [longitude, latitude]
+}
+
 const MapView = ({
   locations,
   onMarkerClick,
@@ -79,12 +99,27 @@ const MapView = ({
 
     if (locations.length === 0) return
 
-    const markers = locations.map((location) => {
+    const validLocations = locations
+      .map((location) => ({
+        location,
+        position: getLocationPosition(location),
+      }))
+      .filter(
+        (item): item is { location: Location; position: [number, number] } =>
+          item.position !== null,
+      )
+
+    if (validLocations.length === 0) return
+
+    if (validLocations.length !== locations.length) {
+      console.warn('Some locations were skipped because their coordinates are invalid.', locations)
+    }
+
+    const markers = validLocations.map(({ location, position }) => {
       const marker = new AMap.Marker({
-        position: [location.longitude, location.latitude],
+        position,
         content: createMarkerContent(location),
         offset: new AMap.Pixel(-28, -28),
-        anchor: 'center',
         extData: location,
       })
 
@@ -114,19 +149,23 @@ const MapView = ({
       map.add(markers)
     }
 
-    if (locations.length > 0) {
-      const bounds = new AMap.Bounds()
-      locations.forEach((loc) => {
-        bounds.extend([loc.longitude, loc.latitude])
-      })
-      map.setBounds(bounds, [60, 60, 60, 60])
+    if (validLocations.length === 1) {
+      map.setZoomAndCenter(12, validLocations[0].position)
+      return
     }
+
+    map.setFitView(markers, false, [60, 60, 60, 60])
   }, [map, isReady, locations, onMarkerClick, createMarkerContent])
 
   useEffect(() => {
     if (!map || !isReady || !focusPosition) return
 
-    const position = [focusPosition.lng, focusPosition.lat]
+    const lng = toFiniteNumber(focusPosition.lng)
+    const lat = toFiniteNumber(focusPosition.lat)
+
+    if (lng === null || lat === null || !isValidLngLat(lng, lat)) return
+
+    const position: [number, number] = [lng, lat]
     map.setZoomAndCenter(15, position, true)
 
     if (searchMarkerRef.current) {
@@ -139,7 +178,7 @@ const MapView = ({
       anchor: 'bottom-center',
     })
     marker.on('click', () => {
-      onMapClick?.(focusPosition.lng, focusPosition.lat)
+      onMapClick?.(lng, lat)
     })
     marker.setMap(map)
     searchMarkerRef.current = marker

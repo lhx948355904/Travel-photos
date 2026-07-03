@@ -27,6 +27,21 @@ interface SearchBoxProps {
   onSelectPoi?: (name: string, lng: number, lat: number) => void
 }
 
+const isValidLngLat = (longitude: number, latitude: number) => {
+  return longitude >= -180 && longitude <= 180 && latitude >= -90 && latitude <= 90
+}
+
+const normalizePoiLocation = (location: any): { lng: number; lat: number } | undefined => {
+  if (!location) return undefined
+
+  const lng = Number(typeof location.getLng === 'function' ? location.getLng() : location.lng)
+  const lat = Number(typeof location.getLat === 'function' ? location.getLat() : location.lat)
+
+  return Number.isFinite(lng) && Number.isFinite(lat) && isValidLngLat(lng, lat)
+    ? { lng, lat }
+    : undefined
+}
+
 const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
   const [keyword, setKeyword] = useState('')
   const [suggestions, setSuggestions] = useState<PoiSuggestion[]>([])
@@ -83,12 +98,7 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
             name: item.name,
             district: item.district,
             address: item.address,
-            location: item.location
-              ? {
-                  lng: Number(item.location.lng),
-                  lat: Number(item.location.lat),
-                }
-              : undefined,
+            location: normalizePoiLocation(item.location),
           }))
         setSuggestions(tips)
       } else {
@@ -116,7 +126,11 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
       const pois = result?.poiList?.pois || []
       if (status === 'complete' && result.info === 'OK' && pois.length > 0) {
         const poi = pois[0]
-        selectPoi(poi.name || item.name, Number(poi.location.lng), Number(poi.location.lat))
+        const location = normalizePoiLocation(poi.location)
+
+        if (location) {
+          selectPoi(poi.name || item.name, location.lng, location.lat)
+        }
       }
     })
   }

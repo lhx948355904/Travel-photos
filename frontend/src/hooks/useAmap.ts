@@ -16,6 +16,7 @@ export function useAmap(containerId: string) {
 
   useEffect(() => {
     let map: any = null
+    let cancelled = false
 
     const initMap = async () => {
       try {
@@ -43,7 +44,11 @@ export function useAmap(containerId: string) {
         }))
 
         mapRef.current = map
-        setIsReady(true)
+        map.on('complete', () => {
+          if (cancelled) return
+          map.resize()
+          setIsReady(true)
+        })
       } catch (error) {
         console.error('Map init error:', error)
       }
@@ -52,6 +57,9 @@ export function useAmap(containerId: string) {
     initMap()
 
     return () => {
+      cancelled = true
+      setIsReady(false)
+      mapRef.current = null
       if (map) {
         map.destroy()
       }
