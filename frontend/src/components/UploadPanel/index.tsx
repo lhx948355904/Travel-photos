@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, DatePicker, Form, Input, message, Modal, Upload } from "antd";
 import {
   DeleteOutlined,
+  EnvironmentOutlined,
   PlusOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
@@ -429,10 +430,19 @@ const UploadPanel = ({
   const hasPendingFiles = uploadItems.some(
     (item) => !item.url && !item.uploading,
   );
+  const modalTitle = (
+    <div className="upload-modal-title">
+      <span>
+        <EnvironmentOutlined />
+        {editingLocation ? "编辑地点" : "添加地点"}
+      </span>
+      <strong>{editingLocation ? "更新这段旅行记忆" : "把照片放回地图上"}</strong>
+    </div>
+  );
 
   return (
     <Modal
-      title={editingLocation ? "编辑地点" : "添加地点"}
+      title={modalTitle}
       open={open}
       onCancel={handleClose}
       mask={false}
@@ -515,13 +525,18 @@ const UploadPanel = ({
                 onClick={() => setCoverIndex(index)}
                 role="button"
                 tabIndex={0}
+                aria-pressed={coverIndex === index}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
                     setCoverIndex(index);
                   }
                 }}
               >
-                <img src={item.thumbUrl || item.url || item.previewUrl} alt="" />
+                <img
+                  src={item.thumbUrl || item.url || item.previewUrl}
+                  alt={`${item.file.name} 预览`}
+                />
                 {!item.url && (
                   <div className={`upload-status ${item.error ? "error" : ""}`}>
                     {item.error

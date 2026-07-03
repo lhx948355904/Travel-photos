@@ -15,7 +15,6 @@ import { useNavigate } from "react-router-dom";
 import ActivityPanel from "../../components/ActivityPanel";
 import FullscreenGallery from "../../components/FullscreenGallery";
 import MapView from "../../components/MapView/MapView";
-import MapTrailAmbient from "../../components/MapTrailAmbient";
 import SearchBox from "../../components/MapView/SearchBox";
 import UploadPanel from "../../components/UploadPanel";
 import { useActivitySocket } from "../../hooks/useActivitySocket";
@@ -78,11 +77,14 @@ const Map = () => {
   const latestLocation = useMemo(() => {
     return [...locations]
       .filter((location) => location.travelDate)
-      .sort((a, b) => String(b.travelDate).localeCompare(String(a.travelDate)))[0];
+      .sort((a, b) =>
+        String(b.travelDate).localeCompare(String(a.travelDate)),
+      )[0];
   }, [locations]);
 
-  const focusLabel = searchPoi?.name || selectedLocation?.name || "尚未选择地点";
-  const latestDateLabel = latestLocation?.travelDate || "尚未记录";
+  const hasLocations = locations.length > 0;
+  const focusLabel = searchPoi?.name || selectedLocation?.name || "未选择地点";
+  const latestDateLabel = latestLocation?.travelDate || "暂无记录";
 
   const fetchLocations = useCallback(async () => {
     setLocationLoading(true);
@@ -242,35 +244,26 @@ const Map = () => {
   };
 
   return (
-    <div className="home-page">
-      <MapTrailAmbient locations={locations} />
-
-      <main className="home-content">
-        <header className="home-header">
-          <div className="home-brand">
-            <div className="brand-mark" aria-hidden="true">
+    <div className="map-page">
+      <main className="map-app-shell">
+        <header className="map-topbar">
+          <div className="map-brand">
+            <div className="map-brand-mark" aria-hidden="true">
               MAP
             </div>
-            <div className="home-titlebar">
+            <div className="map-titlebar">
               <span>Travel Photo Map</span>
               <h1>旅行摄影地图</h1>
             </div>
           </div>
 
-          <nav className="home-nav-strip" aria-label="地图工作区">
-            <span>地图</span>
-            <span>地点</span>
-            <span>相册</span>
-            {isAdmin && <span>上传</span>}
-          </nav>
-
-          <div className="home-search">
+          <div className="map-topbar-search">
             <SearchBox onSelectPoi={handleSearchSelect} />
           </div>
 
-          <div className="home-actions">
-            <span className="mode-pill">
-              {isAdmin ? "管理员模式" : "公开浏览"}
+          <div className="map-topbar-actions">
+            <span className="map-mode-pill">
+              {isAdmin ? "管理模式" : "公开浏览"}
             </span>
             {isAdmin ? (
               <>
@@ -278,7 +271,7 @@ const Map = () => {
                   type="primary"
                   icon={<PlusOutlined />}
                   onClick={openCreatePanel}
-                  className="header-action"
+                  className="map-primary-action"
                 >
                   添加地点
                 </Button>
@@ -294,52 +287,58 @@ const Map = () => {
           </div>
         </header>
 
-        <section className="home-workspace">
-          <aside className="story-panel" aria-label="旅行地图概览">
-            <div className="panel-block">
-              <span className="panel-label">空间相册</span>
-              <h2>地点、照片、时间一起被保存。</h2>
+        <section className="map-workspace">
+          <aside className="map-side-panel" aria-label="旅行地图概览">
+            <section className="map-summary-card">
+              <span className="map-section-label">Spatial Archive</span>
+              <h2>用地图整理每一次抵达</h2>
               <p>
-                每个坐标都可以成为一个照片 Marker。游客从地图进入记忆，管理员在同一个画布上维护内容。
+                地点、照片和旅行时间被收进同一个空间视图。浏览者从地图进入记忆，管理员在同一块画布上维护内容。
               </p>
-            </div>
+            </section>
 
-            <div className="metric-grid">
-              <div className="metric-card">
+            <div className="map-stats-grid" aria-label="地图统计">
+              <div className="map-stat-card">
                 <EnvironmentOutlined />
                 <span>地点</span>
                 <strong>{locations.length}</strong>
               </div>
-              <div className="metric-card">
+              <div className="map-stat-card">
                 <CameraOutlined />
                 <span>照片</span>
                 <strong>{totalPhotos}</strong>
               </div>
-              <div className="metric-card wide">
+              <div className="map-stat-card map-stat-card-wide">
                 <CalendarOutlined />
                 <span>最近旅程</span>
                 <strong>{latestDateLabel}</strong>
               </div>
             </div>
 
-            <div className="focus-card">
+            <section className="map-focus-card" aria-label="当前焦点">
               <span>当前焦点</span>
               <strong>{focusLabel}</strong>
               {searchPoi && <small>已定位到地图坐标</small>}
-            </div>
+            </section>
 
-            <div className="semantic-search-panel">
-              <span className="panel-label">照片语义搜索</span>
+            <section className="map-photo-search-card">
+              <span className="map-section-label">Photo Search</span>
               <Input.Search
                 allowClear
                 enterButton={<SearchOutlined />}
                 placeholder="搜索海边日落、寺庙、花园..."
                 loading={photoSearchLoading}
                 onSearch={handlePhotoSearch}
+                aria-label="搜索照片"
               />
               {(photoSearchLoading || photoSearchTouched) && (
-                <div className="photo-search-results">
-                  {photoSearchLoading && <Spin size="small" />}
+                <div className="photo-search-results" aria-live="polite">
+                  {photoSearchLoading && (
+                    <div className="photo-search-status">
+                      <Spin size="small" />
+                      <span>正在搜索照片</span>
+                    </div>
+                  )}
                   {!photoSearchLoading && photoResults.length === 0 && (
                     <div className="photo-search-empty">没有找到匹配照片</div>
                   )}
@@ -368,7 +367,7 @@ const Map = () => {
                     ))}
                 </div>
               )}
-            </div>
+            </section>
 
             <ActivityPanel
               status={status}
@@ -381,7 +380,7 @@ const Map = () => {
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={openCreatePanel}
-                className="panel-create"
+                className="map-panel-create"
                 block
               >
                 添加地点
@@ -389,14 +388,14 @@ const Map = () => {
             )}
           </aside>
 
-          <section className="map-stage" aria-label="旅行地图">
-            <div className="map-stage-header">
+          <section className="map-canvas-panel" aria-label="旅行地图">
+            <div className="map-canvas-header">
               <div>
-                <span>Map Canvas</span>
+                <span className="map-section-label">Map Canvas</span>
                 <h2>旅行足迹</h2>
               </div>
-              {locations.length > 0 && (
-                <div className="map-stage-status">
+              {hasLocations && (
+                <div className="map-canvas-status">
                   <EnvironmentOutlined />
                   <span>{locations.length} 个地点</span>
                 </div>
@@ -407,6 +406,22 @@ const Map = () => {
               {locationLoading && (
                 <div className="map-loading">
                   <Spin />
+                </div>
+              )}
+              {!locationLoading && !hasLocations && (
+                <div className="map-empty-state">
+                  <EnvironmentOutlined />
+                  <h3>还没有旅行地点</h3>
+                  <p>
+                    {isAdmin
+                      ? "点击地图或搜索地点后，可以添加第一组照片。"
+                      : "管理员添加地点后，照片会出现在这张地图上。"}
+                  </p>
+                  {isAdmin && (
+                    <Button type="primary" onClick={openCreatePanel}>
+                      添加地点
+                    </Button>
+                  )}
                 </div>
               )}
               <MapView

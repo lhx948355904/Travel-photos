@@ -37,7 +37,7 @@ const ActivityPanel = ({ status, onlineCount, messages }: ActivityPanelProps) =>
     <section className="activity-panel" aria-label="实时地图动态">
       <div className="activity-panel-header">
         <div>
-          <span>WebSocket</span>
+          <span className="map-section-label">WebSocket</span>
           <strong>实时动态</strong>
         </div>
         <span className={`activity-status ${status}`}>

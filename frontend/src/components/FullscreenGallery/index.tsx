@@ -66,12 +66,16 @@ const FullscreenGallery = ({
       {open && (
         <motion.div
           className="gallery-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${location.name} 照片画廊`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
         >
           <button
+            type="button"
             onClick={onClose}
             className="gallery-close"
             aria-label="关闭画廊"
@@ -81,14 +85,16 @@ const FullscreenGallery = ({
 
           <div className="gallery-info">
             <h2>{location.name}</h2>
-            <p>
-              {hasPhotos ? `${activeIndex + 1} / ${photos.length}` : "0 / 0"}
-              {currentPhoto?.shotDate && (
+            {location.description && <p>{location.description}</p>}
+            <div className="gallery-meta">
+              <span>{hasPhotos ? `${activeIndex + 1} / ${photos.length}` : "0 / 0"}</span>
+              {(currentPhoto?.shotDate || location.travelDate) && (
                 <span>
-                  <CalendarOutlined /> {currentPhoto.shotDate}
+                  <CalendarOutlined />
+                  {currentPhoto?.shotDate || location.travelDate}
                 </span>
               )}
-            </p>
+            </div>
           </div>
 
           {hasPhotos ? (
@@ -129,13 +135,17 @@ const FullscreenGallery = ({
             </Swiper>
           ) : (
             <div className="gallery-empty">
-              <h3>这个地点还没有照片</h3>
+              <div>
+                <h3>这个地点还没有照片</h3>
+                <p>管理员添加照片后，这里会显示完整画廊。</p>
+              </div>
             </div>
           )}
 
           {photos.length > 1 && (
             <>
               <button
+                type="button"
                 onClick={() => mainSwiperRef.current?.slidePrev()}
                 className="gallery-nav prev"
                 aria-label="上一张照片"
@@ -143,6 +153,7 @@ const FullscreenGallery = ({
                 <LeftOutlined />
               </button>
               <button
+                type="button"
                 onClick={() => mainSwiperRef.current?.slideNext()}
                 className="gallery-nav next"
                 aria-label="下一张照片"
@@ -153,7 +164,7 @@ const FullscreenGallery = ({
           )}
 
           {photos.length > 1 && (
-            <div className="gallery-thumbs">
+            <div className="gallery-thumbs" aria-label="照片缩略图">
               <Swiper
                 onSwiper={setThumbsSwiper}
                 slidesPerView="auto"

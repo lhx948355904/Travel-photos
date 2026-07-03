@@ -203,6 +203,8 @@ const MapView = ({
     <div
       id={containerId}
       className="map-surface"
+      role="application"
+      aria-label="高德旅行照片地图"
       style={{
         width: '100%',
         height: '100%',

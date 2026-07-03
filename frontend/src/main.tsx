@@ -13,27 +13,32 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       locale={zhCN}
       theme={{
         token: {
-          colorPrimary: "#000000",
+          colorPrimary: "#9fe870",
+          colorPrimaryHover: "#cdffad",
+          colorPrimaryActive: "#c5edab",
           colorSuccess: "#1ea64a",
           colorError: "#c92a2a",
-          colorText: "#000000",
-          colorTextSecondary: "#1f1f1f",
-          borderRadius: 8,
+          colorText: "#0e0f0c",
+          colorTextSecondary: "#454745",
+          colorBgLayout: "#e8ebe6",
+          colorBorder: "rgba(14, 15, 12, 0.14)",
+          colorTextLightSolid: "#0e0f0c",
+          borderRadius: 12,
           fontFamily:
             "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif",
         },
         components: {
           Button: {
-            borderRadius: 50,
-            controlHeight: 40,
-            fontWeight: 480,
+            borderRadius: 24,
+            controlHeight: 44,
+            fontWeight: 700,
           },
           Input: {
-            borderRadius: 8,
+            borderRadius: 12,
             controlHeight: 44,
           },
           DatePicker: {
-            borderRadius: 8,
+            borderRadius: 12,
             controlHeight: 44,
           },
           Modal: {

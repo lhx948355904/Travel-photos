@@ -60,6 +60,7 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
   const [suggestions, setSuggestions] = useState<PoiSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [searched, setSearched] = useState(false);
   const autoCompleteRef = useRef<any>(null);
   const placeSearchRef = useRef<any>(null);
   const searchSeqRef = useRef(0);
@@ -98,9 +99,11 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
     if (!value.trim() || !autoCompleteRef.current) {
       setSuggestions([]);
       setLoading(false);
+      setSearched(false);
       return;
     }
 
+    setSearched(true);
     setLoading(true);
     autoCompleteRef.current.search(value.trim(), (status: string, result: any) => {
       if (seq !== searchSeqRef.current) return;
@@ -126,6 +129,7 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
   const selectPoi = (name: string, lng: number, lat: number) => {
     setKeyword(name);
     setSuggestions([]);
+    setSearched(false);
     onSelectPoi?.(name, lng, lat);
   };
 
@@ -146,10 +150,15 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
 
         if (location) {
           selectPoi(poi.name || item.name, location.lng, location.lat);
+          return;
         }
       }
+
+      setSuggestions([]);
     });
   };
+
+  const showResults = Boolean(keyword.trim()) && (loading || searched);
 
   return (
     <div className="search-box">
@@ -162,10 +171,11 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
         disabled={!ready}
         size="large"
         aria-label="搜索地点"
+        aria-expanded={showResults}
       />
 
-      {(suggestions.length > 0 || loading) && (
-        <div className="search-results">
+      {showResults && (
+        <div className="search-results" role="listbox" aria-label="地点搜索结果">
           {loading && (
             <div className="search-status">
               <Spin size="small" />
@@ -178,6 +188,8 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
                 key={`${item.id || item.name}-${index}`}
                 className="search-result-item"
                 type="button"
+                role="option"
+                aria-selected={false}
                 onClick={() => handleSelect(item)}
               >
                 <EnvironmentOutlined />
