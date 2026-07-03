@@ -60,7 +60,7 @@ export const useActivitySocket = () => {
 
       socket.onopen = () => {
         setStatus('open')
-        socket.send(JSON.stringify({ type: 'hello', content: 'A visitor opened the map home page' }))
+        socket.send(JSON.stringify({ type: 'hello', content: '有访客打开了旅行地图' }))
         heartbeatTimerRef.current = window.setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: 'ping' }))

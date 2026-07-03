@@ -4,7 +4,7 @@ import Login from "./pages/Login";
 import Map from "./pages/Map";
 
 const ICP_BEIAN_URL = "https://beian.miit.gov.cn/";
-const ICP_BEIAN_NUMBER = "\u6CAAICP\u59072026036429\u53F7";
+const ICP_BEIAN_NUMBER = "沪ICP备2026036429号";
 
 function App() {
   return (

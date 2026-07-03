@@ -6,19 +6,23 @@ import {
   DeleteOutlined,
   EditOutlined,
   EnvironmentOutlined,
+  LoginOutlined,
+  LogoutOutlined,
   PlusOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import ActivityPanel from "../../components/ActivityPanel";
 import FullscreenGallery from "../../components/FullscreenGallery";
 import MapView from "../../components/MapView/MapView";
+import MapTrailAmbient from "../../components/MapTrailAmbient";
 import SearchBox from "../../components/MapView/SearchBox";
 import UploadPanel from "../../components/UploadPanel";
 import { useActivitySocket } from "../../hooks/useActivitySocket";
 import {
+  deleteLocation,
   getLocationDetail,
   getLocations,
-  deleteLocation,
 } from "../../api/location";
 import { searchPhotos } from "../../api/search";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -26,7 +30,9 @@ import { useMapStore } from "../../store/useMapStore";
 import type { Location, SearchPhotoResult } from "../../types";
 
 const Map = () => {
+  const navigate = useNavigate();
   const isAdmin = useAuthStore((state) => state.isAdmin);
+  const logout = useAuthStore((state) => state.logout);
   const {
     locations,
     setLocations,
@@ -72,13 +78,10 @@ const Map = () => {
   const latestLocation = useMemo(() => {
     return [...locations]
       .filter((location) => location.travelDate)
-      .sort((a, b) =>
-        String(b.travelDate).localeCompare(String(a.travelDate)),
-      )[0];
+      .sort((a, b) => String(b.travelDate).localeCompare(String(a.travelDate)))[0];
   }, [locations]);
 
-  const focusLabel =
-    searchPoi?.name || selectedLocation?.name || "尚未选择地点";
+  const focusLabel = searchPoi?.name || selectedLocation?.name || "尚未选择地点";
   const latestDateLabel = latestLocation?.travelDate || "尚未记录";
 
   const fetchLocations = useCallback(async () => {
@@ -112,24 +115,31 @@ const Map = () => {
     [sendActivity, setSelectedLocation],
   );
 
-  const handleMapClick = useCallback((lng: number, lat: number) => {
-    setClickPosition({ lng, lat });
-    setSearchPoi(null);
-    setEditingLocation(null);
-    setUploadOpen(true);
-  }, []);
+  const handleMapClick = useCallback(
+    (lng: number, lat: number) => {
+      if (!isAdmin) return;
+      setClickPosition({ lng, lat });
+      setSearchPoi(null);
+      setEditingLocation(null);
+      setUploadOpen(true);
+    },
+    [isAdmin],
+  );
 
   const handleSearchSelect = useCallback(
     (name: string, lng: number, lat: number) => {
       setSearchPoi({ name, lng, lat });
       setClickPosition({ lng, lat });
       setFocusPosition({ name, lng, lat });
-      setEditingLocation(null);
-      setUploadOpen(true);
+
+      if (isAdmin) {
+        setEditingLocation(null);
+        setUploadOpen(true);
+      }
 
       sendActivity(`定位到 ${name}`);
     },
-    [sendActivity],
+    [isAdmin, sendActivity],
   );
 
   const handlePhotoSearch = async (query: string) => {
@@ -214,6 +224,11 @@ const Map = () => {
   };
 
   const openCreatePanel = () => {
+    if (!isAdmin) {
+      navigate("/login");
+      return;
+    }
+
     setEditingLocation(null);
     setClickPosition(
       searchPoi ? { lng: searchPoi.lng, lat: searchPoi.lat } : null,
@@ -221,9 +236,14 @@ const Map = () => {
     setUploadOpen(true);
   };
 
+  const handleLogout = () => {
+    logout();
+    message.success("已退出管理员模式");
+  };
+
   return (
     <div className="home-page">
-      <div className="home-atmosphere" aria-hidden="true" />
+      <MapTrailAmbient locations={locations} />
 
       <main className="home-content">
         <header className="home-header">
@@ -250,16 +270,25 @@ const Map = () => {
 
           <div className="home-actions">
             <span className="mode-pill">
-              {isAdmin ? "管理模式" : "公开浏览"}
+              {isAdmin ? "管理员模式" : "公开浏览"}
             </span>
-            {isAdmin && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={openCreatePanel}
-                className="header-action"
-              >
-                添加地点
+            {isAdmin ? (
+              <>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={openCreatePanel}
+                  className="header-action"
+                >
+                  添加地点
+                </Button>
+                <Button icon={<LogoutOutlined />} onClick={handleLogout}>
+                  退出
+                </Button>
+              </>
+            ) : (
+              <Button icon={<LoginOutlined />} onClick={() => navigate("/login")}>
+                管理登录
               </Button>
             )}
           </div>
@@ -268,9 +297,11 @@ const Map = () => {
         <section className="home-workspace">
           <aside className="story-panel" aria-label="旅行地图概览">
             <div className="panel-block">
-              <span className="panel-label">站点相册</span>
-              <h2>地点、照片、时间</h2>
-              <p>把旅行中的每一个坐标固定成照片标记，让路线和记忆一起保留。</p>
+              <span className="panel-label">空间相册</span>
+              <h2>地点、照片、时间一起被保存。</h2>
+              <p>
+                每个坐标都可以成为一个照片 Marker。游客从地图进入记忆，管理员在同一个画布上维护内容。
+              </p>
             </div>
 
             <div className="metric-grid">
@@ -383,7 +414,7 @@ const Map = () => {
                 onMarkerClick={handleMarkerClick}
                 onMapClick={handleMapClick}
                 focusPosition={focusPosition}
-                canCreateLocation
+                canCreateLocation={isAdmin}
               />
             </div>
           </section>
