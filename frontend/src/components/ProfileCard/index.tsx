@@ -254,9 +254,16 @@ const ProfileCard = ({ profile, onEnterMap }: ProfileCardProps) => {
                 </span>
               ))}
             </div>
-            <h1>旅行照片的地图记忆</h1>
+            <h1>
+              鸿翔の
+              <br />
+              摄影云盘
+            </h1>
           </div>
-          <p>用地点、时间和照片组织旅行轨迹，游客可浏览，管理员可维护。</p>
+          <p>
+            摄影是思维的具象化，愿你四处皆美景，事事都如意~ <br />
+            欢迎来到我的思维空间
+          </p>
 
           <div className="landing-hero__actions" aria-label="主要操作">
             <button
@@ -333,10 +340,8 @@ const ProfileCard = ({ profile, onEnterMap }: ProfileCardProps) => {
         id="archive"
       >
         <div className="landing-section__intro">
-          <h2>把相册从时间线，推进到空间档案</h2>
-          <p>
-            这个首页不只是展示个人资料，它要先说明产品价值，再把访问者自然带进地图。
-          </p>
+          <h2>春风若有怜花意，可否许我再少年？</h2>
+          <p>保存我所见所闻，所思所想</p>
         </div>
 
         <div className="landing-feature-grid">
