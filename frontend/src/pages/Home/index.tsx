@@ -67,8 +67,8 @@ const cinematicStories: StoryBase[] = [
   {
     label: "Golden Hour",
     title: "金色时刻",
-    heading: ["把旅途放回", "它发生的地方"],
-    lead: "用地图组织照片、地点、日期和记忆。游客先看见旅行足迹，管理员再用登录、上传、对象存储和数据库把每一次出发长期保存下来。",
+    heading: ["鸿翔の", "摄影之旅"],
+    lead: "摄影是思维的具象化，眼睛是心灵的编译器。愿你身边皆美景，事事皆好运~",
     poster: "/landing-float-landscape-lake.png",
     src: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260702_081127_0992a171-d3c6-4978-8213-0ec5df8b6d63.mp4",
   },
@@ -84,7 +84,11 @@ const cinematicStories: StoryBase[] = [
       contacts: [
         { label: "现居", value: "北京天通苑", icon: <EnvironmentOutlined /> },
         { label: "生日", value: "1996.02.22", icon: <CalendarOutlined /> },
-        { label: "电话", value: "17778191619（同微信）", icon: <PhoneOutlined /> },
+        {
+          label: "电话",
+          value: "17778191619（同微信）",
+          icon: <PhoneOutlined />,
+        },
         { label: "邮箱", value: "17778191619@163.com", icon: <MailOutlined /> },
       ],
       work: [
@@ -98,7 +102,8 @@ const cinematicStories: StoryBase[] = [
           company: "知乎 · 安全与治理中心（中电外派）",
           time: "2023.07 ~ 2025.02",
           role: "前端开发工程师",
-          detail: "主 owner 公司 B 端反作弊所有项目评审开发迭代，筋斗云插件开发升级，治理测需求支持。",
+          detail:
+            "主 owner 公司 B 端反作弊所有项目评审开发迭代，筋斗云插件开发升级，治理测需求支持。",
         },
         {
           company: "滴滴出行 · 顺风车部门（博彦外派）",
@@ -170,7 +175,8 @@ const baseStats = [
 
 const collectLandingStats = (locations: Location[]) => {
   const photoCount = locations.reduce(
-    (total, location) => total + (location.photoCount || location.photos?.length || 0),
+    (total, location) =>
+      total + (location.photoCount || location.photos?.length || 0),
     0,
   );
 
@@ -278,9 +284,16 @@ const Home = () => {
               Travel Photo Map
             </a>
 
-            <nav className="landing-nav__links liquid-glass" aria-label="桌面导航">
+            <nav
+              className="landing-nav__links liquid-glass"
+              aria-label="桌面导航"
+            >
               {navLinks.map((item) => (
-                <button key={item} type="button" onClick={item === "维护入口" ? enterLogin : enterMap}>
+                <button
+                  key={item}
+                  type="button"
+                  onClick={item === "维护入口" ? enterLogin : enterMap}
+                >
                   {item}
                 </button>
               ))}
@@ -317,7 +330,9 @@ const Home = () => {
                 <button
                   key={item}
                   type="button"
-                  style={{ "--delay": `${100 + index * 50}ms` } as CSSProperties}
+                  style={
+                    { "--delay": `${100 + index * 50}ms` } as CSSProperties
+                  }
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     item === "维护入口" ? enterLogin() : enterMap();
@@ -340,16 +355,16 @@ const Home = () => {
             </nav>
           </div>
 
-          <div className={`landing-hero${activeStory.panel ? " landing-hero--with-panel" : ""}`}>
+          <div
+            className={`landing-hero${activeStory.panel ? " landing-hero--with-panel" : ""}`}
+          >
             <h1>
               {activeStory.heading[0]}
               <br />
               {activeStory.heading[1]}
             </h1>
 
-            <p className="landing-hero__lead">
-              {activeStory.lead}
-            </p>
+            <p className="landing-hero__lead">{activeStory.lead}</p>
 
             {activeStory.panel && (
               <StoryPanelContent panel={activeStory.panel} />
@@ -393,7 +408,10 @@ const Home = () => {
 const StoryPanelContent = ({ panel }: { panel: StoryPanel }) => {
   if (panel.type === "profile") {
     return (
-      <section className="landing-story-panel landing-story-panel--profile" aria-label="个人简介">
+      <section
+        className="landing-story-panel landing-story-panel--profile"
+        aria-label="个人简介"
+      >
         <div className="landing-story-panel__heading">
           <ProfileOutlined />
           <div>
@@ -419,7 +437,9 @@ const StoryPanelContent = ({ panel }: { panel: StoryPanel }) => {
                 <h3>{item.company}</h3>
                 <p>{item.detail}</p>
               </div>
-              <span>{item.time} / {item.role}</span>
+              <span>
+                {item.time} / {item.role}
+              </span>
             </article>
           ))}
         </div>
@@ -429,7 +449,10 @@ const StoryPanelContent = ({ panel }: { panel: StoryPanel }) => {
 
   if (panel.type === "skills") {
     return (
-      <section className="landing-story-panel landing-story-panel--skills liquid-glass" aria-label="技术栈">
+      <section
+        className="landing-story-panel landing-story-panel--skills liquid-glass"
+        aria-label="技术栈"
+      >
         <div className="landing-story-panel__heading">
           <ToolOutlined />
           <div>
@@ -449,7 +472,10 @@ const StoryPanelContent = ({ panel }: { panel: StoryPanel }) => {
 
   if (panel.type === "tech") {
     return (
-      <section className="landing-story-panel landing-story-panel--tech liquid-glass" aria-label="技术栈">
+      <section
+        className="landing-story-panel landing-story-panel--tech liquid-glass"
+        aria-label="技术栈"
+      >
         <div className="landing-story-panel__heading">
           <ToolOutlined />
           <div>
@@ -478,7 +504,10 @@ const StoryPanelContent = ({ panel }: { panel: StoryPanel }) => {
   }
 
   return (
-    <section className="landing-story-panel landing-story-panel--project liquid-glass" aria-label="项目说明">
+    <section
+      className="landing-story-panel landing-story-panel--project liquid-glass"
+      aria-label="项目说明"
+    >
       <div className="landing-story-panel__heading">
         <FieldTimeOutlined />
         <div>
