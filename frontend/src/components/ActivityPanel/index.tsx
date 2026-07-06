@@ -37,7 +37,7 @@ const ActivityPanel = ({ status, onlineCount, messages }: ActivityPanelProps) =>
     <section className="activity-panel" aria-label="实时地图动态">
       <div className="activity-panel-header">
         <div>
-          <span className="map-section-label">WebSocket</span>
+          <span className="map-section-label">Live Presence</span>
           <strong>实时动态</strong>
         </div>
         <span className={`activity-status ${status}`}>
@@ -54,7 +54,7 @@ const ActivityPanel = ({ status, onlineCount, messages }: ActivityPanelProps) =>
 
       <div className="activity-feed">
         {messages.length === 0 ? (
-          <p className="activity-empty">等待新的地图浏览或维护动态</p>
+          <p className="activity-empty">等待新的地图浏览或维护动态。</p>
         ) : (
           messages.map((message) => (
             <article className="activity-item" key={message.id}>

@@ -6,6 +6,16 @@ const request = axios.create({
   timeout: 30000,
 })
 
+const getErrorMessage = (error: any) => {
+  if (error.code === 'ECONNABORTED') {
+    return '请求超时，请稍后重试'
+  }
+  if (error.code === 'ERR_NETWORK') {
+    return '网络连接失败，请确认后端服务已启动'
+  }
+  return error.response?.data?.message || error.message || '请求失败'
+}
+
 request.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token
   if (token) {
@@ -23,11 +33,17 @@ request.interceptors.response.use(
     return data.data
   },
   (error) => {
-    const message = error.response?.data?.message || error.message || '请求失败'
+    const message = getErrorMessage(error)
     if (error.response?.status === 401) {
       useAuthStore.getState().logout()
     }
-    return Promise.reject(new Error(message))
+    const normalizedError = new Error(message) as Error & {
+      code?: string
+      status?: number
+    }
+    normalizedError.code = error.code
+    normalizedError.status = error.response?.status
+    return Promise.reject(normalizedError)
   },
 )
 

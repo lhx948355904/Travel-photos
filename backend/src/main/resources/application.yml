@@ -41,6 +41,13 @@ cos:
   bucket: ${COS_BUCKET:}
   region: ${COS_REGION:}
   cdn-domain: ${COS_CDN_DOMAIN:}
+  local-upload-dir: ${LOCAL_UPLOAD_DIR:data/uploads}
+  local-public-path: ${LOCAL_PUBLIC_PATH:/uploads}
+  local-fallback-enabled: ${COS_LOCAL_FALLBACK_ENABLED:true}
+  public-read-acl-enabled: ${COS_PUBLIC_READ_ACL_ENABLED:true}
+  connect-timeout-millis: ${COS_CONNECT_TIMEOUT_MILLIS:10000}
+  socket-timeout-millis: ${COS_SOCKET_TIMEOUT_MILLIS:120000}
+  request-timeout-millis: ${COS_REQUEST_TIMEOUT_MILLIS:120000}
 
 jwt:
   secret: ${JWT_SECRET:travel-photo-map-jwt-secret-key-2026-change-me-in-production}

@@ -77,9 +77,7 @@ const Map = () => {
   const latestLocation = useMemo(() => {
     return [...locations]
       .filter((location) => location.travelDate)
-      .sort((a, b) =>
-        String(b.travelDate).localeCompare(String(a.travelDate)),
-      )[0];
+      .sort((a, b) => String(b.travelDate).localeCompare(String(a.travelDate)))[0];
   }, [locations]);
 
   const hasLocations = locations.length > 0;
@@ -247,15 +245,18 @@ const Map = () => {
     <div className="map-page">
       <main className="map-app-shell">
         <header className="map-topbar">
-          <div className="map-brand">
-            <div className="map-brand-mark" aria-hidden="true">
-              MAP
-            </div>
-            <div className="map-titlebar">
-              <span>Travel Photo Map</span>
-              <h1>旅行摄影地图</h1>
-            </div>
-          </div>
+          <button
+            type="button"
+            className="map-brand"
+            onClick={() => navigate("/")}
+            aria-label="返回 Lumora 首页"
+          >
+            <span className="map-brand-logo">Lumora</span>
+            <span className="map-titlebar">
+              <span>Spatial Archive</span>
+              <strong>旅行摄影地图</strong>
+            </span>
+          </button>
 
           <div className="map-topbar-search">
             <SearchBox onSelectPoi={handleSearchSelect} />
@@ -263,7 +264,7 @@ const Map = () => {
 
           <div className="map-topbar-actions">
             <span className="map-mode-pill">
-              {isAdmin ? "管理模式" : "公开浏览"}
+              {isAdmin ? "管理员模式" : "公开浏览"}
             </span>
             {isAdmin ? (
               <>
@@ -290,10 +291,10 @@ const Map = () => {
         <section className="map-workspace">
           <aside className="map-side-panel" aria-label="旅行地图概览">
             <section className="map-summary-card">
-              <span className="map-section-label">Spatial Archive</span>
-              <h2>用地图整理每一次抵达</h2>
+              <span className="map-section-label">Map Memory</span>
+              <h2>把每次抵达，安静地放回地图里</h2>
               <p>
-                地点、照片和旅行时间被收进同一个空间视图。浏览者从地图进入记忆，管理员在同一块画布上维护内容。
+                地点、照片和旅行时间被收进同一张空间画布。浏览者从地图进入记忆，管理员在这里维护照片和故事。
               </p>
             </section>
 
@@ -318,7 +319,7 @@ const Map = () => {
             <section className="map-focus-card" aria-label="当前焦点">
               <span>当前焦点</span>
               <strong>{focusLabel}</strong>
-              {searchPoi && <small>已定位到地图坐标</small>}
+              {searchPoi && <small>已定位到地图坐标，可继续添加照片地点。</small>}
             </section>
 
             <section className="map-photo-search-card">

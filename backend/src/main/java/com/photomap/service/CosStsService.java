@@ -8,6 +8,7 @@ import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
 import com.qcloud.cos.auth.COSCredentials;
+import com.qcloud.cos.exception.CosServiceException;
 import com.qcloud.cos.model.CannedAccessControlList;
 import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.model.PutObjectRequest;
@@ -21,12 +22,19 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Set;
 import java.util.TreeMap;
@@ -86,18 +94,19 @@ public class CosStsService {
     }
 
     public CosUploadResponse uploadFile(Long userId, MultipartFile file) {
-        validateCosConfig();
         String format = validateImage(file);
 
         String key = createObjectKey(userId, file.getOriginalFilename(), format);
+        if (!hasCosConfig()) {
+            return uploadLocalFile(file, key, "stored locally because COS config is incomplete");
+        }
+
         COSClient cosClient = createClient();
 
         try {
             ObjectMetadata metadata = new ObjectMetadata();
             metadata.setContentLength(file.getSize());
-            if (StringUtils.hasText(file.getContentType())) {
-                metadata.setContentType(file.getContentType());
-            }
+            metadata.setContentType(resolveContentType(file.getContentType(), format));
 
             PutObjectRequest putObjectRequest = new PutObjectRequest(
                     cosProperties.getBucket(),
@@ -105,7 +114,9 @@ public class CosStsService {
                     file.getInputStream(),
                     metadata
             );
-            putObjectRequest.setCannedAcl(CannedAccessControlList.PublicRead);
+            if (cosProperties.isPublicReadAclEnabled()) {
+                putObjectRequest.setCannedAcl(CannedAccessControlList.PublicRead);
+            }
             cosClient.putObject(putObjectRequest);
 
             CosUploadResponse response = new CosUploadResponse();
@@ -119,9 +130,34 @@ public class CosStsService {
             throw new BusinessException("读取上传文件失败");
         } catch (Exception e) {
             log.error("Failed to upload file to COS", e);
+            if (cosProperties.isLocalFallbackEnabled()) {
+                return uploadLocalFile(file, key, "stored locally because COS upload failed");
+            }
             throw new BusinessException("上传到 COS 失败");
         } finally {
             cosClient.shutdown();
+        }
+    }
+
+    private CosUploadResponse uploadLocalFile(MultipartFile file, String key, String reason) {
+        Path target = resolveLocalPath(key);
+
+        try {
+            Files.createDirectories(target.getParent());
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            CosUploadResponse response = new CosUploadResponse();
+            response.setCosKey(key);
+            response.setUrl(buildLocalPublicUrl(key));
+            response.setStatus("approved");
+            response.setReviewReason(reason);
+            log.info("Saved upload locally, key={}, path={}", key, target);
+            return response;
+        } catch (IOException e) {
+            log.error("Failed to save upload locally", e);
+            throw new BusinessException("保存本地上传文件失败");
         }
     }
 
@@ -129,16 +165,33 @@ public class CosStsService {
         if (!StringUtils.hasText(key)) {
             return false;
         }
+        if (localObjectExists(key)) {
+            return true;
+        }
         if (!hasCosConfig()) {
             log.warn("Skip COS object check because COS config is incomplete");
-            return true;
+            return false;
         }
 
         COSClient cosClient = createClient();
         try {
             return cosClient.doesObjectExist(cosProperties.getBucket(), key);
+        } catch (CosServiceException e) {
+            if (isObjectMissing(e)) {
+                log.info("COS object does not exist, key={}, status={}, code={}",
+                        key,
+                        e.getStatusCode(),
+                        e.getErrorCode());
+                return false;
+            }
+            log.warn("Failed to check COS object existence, key={}, status={}, code={}, message={}",
+                    key,
+                    e.getStatusCode(),
+                    e.getErrorCode(),
+                    e.getErrorMessage());
+            return true;
         } catch (Exception e) {
-            log.warn("Failed to check COS object existence, key={}", key, e);
+            log.warn("Failed to check COS object existence, key={}, message={}", key, e.getMessage());
             return true;
         } finally {
             cosClient.shutdown();
@@ -146,7 +199,13 @@ public class CosStsService {
     }
 
     public String resolvePublicUrl(String key, String fallbackUrl) {
-        if (!StringUtils.hasText(key) || !hasCosConfig()) {
+        if (!StringUtils.hasText(key)) {
+            return fallbackUrl;
+        }
+        if (localObjectExists(key)) {
+            return buildLocalPublicUrl(key);
+        }
+        if (!hasCosConfig()) {
             return fallbackUrl;
         }
         return buildPublicUrl(key);
@@ -165,10 +224,42 @@ public class CosStsService {
                 && StringUtils.hasText(cosProperties.getRegion());
     }
 
+    private boolean isObjectMissing(CosServiceException e) {
+        return e.getStatusCode() == 404
+                || "NoSuchKey".equalsIgnoreCase(e.getErrorCode())
+                || "404 Not Found".equalsIgnoreCase(e.getErrorCode());
+    }
+
     private COSClient createClient() {
         COSCredentials credentials = new BasicCOSCredentials(cosProperties.getSecretId(), cosProperties.getSecretKey());
         ClientConfig clientConfig = new ClientConfig(new Region(cosProperties.getRegion()));
+        applyPositiveTimeout(cosProperties.getConnectTimeoutMillis(), clientConfig::setConnectionTimeout);
+        applyPositiveTimeout(cosProperties.getConnectTimeoutMillis(), clientConfig::setConnectionRequestTimeout);
+        applyPositiveTimeout(cosProperties.getSocketTimeoutMillis(), clientConfig::setSocketTimeout);
+        applyPositiveTimeout(cosProperties.getRequestTimeoutMillis(), clientConfig::setRequestTimeout);
+        clientConfig.setRequestTimeOutEnable(cosProperties.getRequestTimeoutMillis() > 0);
         return new COSClient(credentials, clientConfig);
+    }
+
+    private void applyPositiveTimeout(int timeoutMillis, java.util.function.IntConsumer setter) {
+        if (timeoutMillis > 0) {
+            setter.accept(timeoutMillis);
+        }
+    }
+
+    private String resolveContentType(String browserContentType, String detectedFormat) {
+        if (StringUtils.hasText(browserContentType) && !"application/octet-stream".equals(browserContentType)) {
+            return browserContentType;
+        }
+        return switch (detectedFormat) {
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "gif" -> "image/gif";
+            case "bmp" -> "image/bmp";
+            case "webp" -> "image/webp";
+            case "heic" -> "image/heic";
+            default -> "application/octet-stream";
+        };
     }
 
     private String validateImage(MultipartFile file) {
@@ -188,13 +279,7 @@ public class CosStsService {
             }
 
             if (DECODE_REQUIRED_FORMATS.contains(format)) {
-                BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
-                if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) {
-                    throw new BusinessException("图片无法解析");
-                }
-                if ((long) image.getWidth() * image.getHeight() > MAX_PIXELS) {
-                    throw new BusinessException("图片像素过大");
-                }
+                validateImageDimensions(bytes, format);
             }
 
             return format;
@@ -202,6 +287,35 @@ public class CosStsService {
             throw e;
         } catch (IOException e) {
             throw new BusinessException("读取上传图片失败");
+        } catch (RuntimeException e) {
+            log.warn("Failed to parse upload image metadata, filename={}", file.getOriginalFilename(), e);
+            throw new BusinessException("图片无法解析，请换一张 JPG/PNG 照片");
+        }
+    }
+
+    private void validateImageDimensions(byte[] bytes, String format) throws IOException {
+        String readerFormat = "jpg".equals(format) ? "jpeg" : format;
+        Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName(readerFormat);
+        if (!readers.hasNext()) {
+            throw new BusinessException("图片格式暂不支持");
+        }
+
+        ImageReader reader = readers.next();
+        try (ImageInputStream imageInputStream = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            if (imageInputStream == null) {
+                throw new BusinessException("图片无法解析");
+            }
+            reader.setInput(imageInputStream, true, true);
+            int width = reader.getWidth(0);
+            int height = reader.getHeight(0);
+            if (width <= 0 || height <= 0) {
+                throw new BusinessException("图片无法解析");
+            }
+            if ((long) width * height > MAX_PIXELS) {
+                throw new BusinessException("图片像素过大");
+            }
+        } finally {
+            reader.dispose();
         }
     }
 
@@ -289,5 +403,35 @@ public class CosStsService {
         }
         return "https://" + cosProperties.getBucket() + ".cos."
                 + cosProperties.getRegion() + ".myqcloud.com/" + key;
+    }
+
+    private String buildLocalPublicUrl(String key) {
+        String publicPath = cosProperties.getLocalPublicPath();
+        if (!StringUtils.hasText(publicPath)) {
+            publicPath = "/uploads";
+        }
+        String normalized = publicPath.trim();
+        if (!normalized.startsWith("/")) {
+            normalized = "/" + normalized;
+        }
+        normalized = normalized.replaceAll("/+$", "");
+        return normalized + "/" + key;
+    }
+
+    private boolean localObjectExists(String key) {
+        try {
+            return Files.isRegularFile(resolveLocalPath(key));
+        } catch (BusinessException e) {
+            return false;
+        }
+    }
+
+    private Path resolveLocalPath(String key) {
+        Path uploadRoot = Paths.get(cosProperties.getLocalUploadDir()).toAbsolutePath().normalize();
+        Path target = uploadRoot.resolve(key).normalize();
+        if (!target.startsWith(uploadRoot)) {
+            throw new BusinessException("上传路径不合法");
+        }
+        return target;
     }
 }

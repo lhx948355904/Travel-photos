@@ -164,9 +164,10 @@ const UploadPanel = ({
     updateUploadItem(id, { uploading: true, percent: 0, error: undefined });
 
     try {
-      updateUploadItem(id, { percent: 30 });
-      const uploaded = await uploadToCos(file);
-      updateUploadItem(id, { percent: 85 });
+      const uploaded = await uploadToCos(file, {
+        onProgress: (percent) => updateUploadItem(id, { percent }),
+      });
+      updateUploadItem(id, { percent: 90 });
       const meta = await readImageMeta(file);
 
       updateUploadItem(id, {
@@ -271,8 +272,13 @@ const UploadPanel = ({
       setUploadItems([...nextItems]);
 
       try {
-        const uploaded = await uploadToCos(item.file);
-        nextItems[i] = { ...nextItems[i], percent: 85 };
+        const uploaded = await uploadToCos(item.file, {
+          onProgress: (percent) => {
+            nextItems[i] = { ...nextItems[i], percent };
+            setUploadItems([...nextItems]);
+          },
+        });
+        nextItems[i] = { ...nextItems[i], percent: 90 };
         setUploadItems([...nextItems]);
         const meta = await readImageMeta(item.file);
 

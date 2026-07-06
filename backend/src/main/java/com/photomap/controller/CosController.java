@@ -6,6 +6,7 @@ import com.photomap.dto.CosUploadResponse;
 import com.photomap.service.CosStsService;
 import com.photomap.service.SiteOwnerService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,7 +27,7 @@ public class CosController {
         return ApiResponse.success(cosStsService.getCredential(siteOwnerService.getOwnerId()));
     }
 
-    @PostMapping("/upload")
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<CosUploadResponse> upload(@RequestParam("file") MultipartFile file) {
         return ApiResponse.success(cosStsService.uploadFile(siteOwnerService.getOwnerId(), file));
     }
