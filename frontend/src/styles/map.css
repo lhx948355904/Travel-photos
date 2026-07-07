@@ -663,7 +663,8 @@ body:has(.login-page) {
 .map-surface {
   overflow: hidden;
   border-radius: 18px;
-  filter: saturate(0.88) contrast(0.98);
+  contain: layout paint;
+  isolation: isolate;
 }
 
 .map-loading {
@@ -673,9 +674,7 @@ body:has(.login-page) {
   display: grid;
   place-items: center;
   pointer-events: none;
-  background: rgba(8, 17, 29, 0.36);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(8, 17, 29, 0.26);
 }
 
 .map-empty-state {
@@ -832,7 +831,6 @@ body:has(.login-page) {
   background: var(--map-white);
   box-shadow: 0 10px 20px rgba(8, 17, 29, 0.28);
   cursor: pointer;
-  transform: translateZ(0);
   transition:
     transform 180ms var(--map-ease),
     box-shadow 180ms var(--map-ease);

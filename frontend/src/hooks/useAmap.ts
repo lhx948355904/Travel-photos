@@ -23,13 +23,7 @@ export function useAmap(containerId: string) {
         const AMap = await AMapLoader.load({
           key: AMAP_KEY || '',
           version: '2.0',
-          plugins: [
-            'AMap.MarkerCluster',
-            'AMap.PlaceSearch',
-            'AMap.AutoComplete',
-            'AMap.Scale',
-            'AMap.ToolBar',
-          ],
+          plugins: ['AMap.Scale', 'AMap.ToolBar'],
         })
 
         map = new AMap.Map(containerId, {

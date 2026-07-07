@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AMapLoader from "@amap/amap-jsapi-loader";
 import { Empty, Input, Spin } from "antd";
 import { EnvironmentOutlined, SearchOutlined } from "@ant-design/icons";
@@ -59,22 +59,40 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
   const [keyword, setKeyword] = useState("");
   const [suggestions, setSuggestions] = useState<PoiSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(false);
   const [ready, setReady] = useState(false);
   const [searched, setSearched] = useState(false);
   const autoCompleteRef = useRef<any>(null);
   const placeSearchRef = useRef<any>(null);
+  const initPromiseRef = useRef<Promise<void> | null>(null);
   const searchSeqRef = useRef(0);
+  const disposedRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
+    disposedRef.current = false;
 
-    AMapLoader.load({
+    return () => {
+      disposedRef.current = true;
+    };
+  }, []);
+
+  const ensureSearchReady = useCallback(() => {
+    if (autoCompleteRef.current && placeSearchRef.current) {
+      return Promise.resolve();
+    }
+
+    if (initPromiseRef.current) {
+      return initPromiseRef.current;
+    }
+
+    setInitializing(true);
+    initPromiseRef.current = AMapLoader.load({
       key: AMAP_KEY || "",
       version: "2.0",
       plugins: ["AMap.AutoComplete", "AMap.PlaceSearch"],
     })
       .then((AMap) => {
-        if (cancelled) return;
+        if (disposedRef.current) return;
         autoCompleteRef.current = new AMap.AutoComplete({ city: "全国" });
         placeSearchRef.current = new AMap.PlaceSearch({
           city: "全国",
@@ -83,12 +101,16 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
         setReady(true);
       })
       .catch((error) => {
+        initPromiseRef.current = null;
         console.error("AMap search init error:", error);
+      })
+      .finally(() => {
+        if (!disposedRef.current) {
+          setInitializing(false);
+        }
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return initPromiseRef.current;
   }, []);
 
   const handleSearch = (value: string) => {
@@ -96,7 +118,7 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
     const seq = searchSeqRef.current + 1;
     searchSeqRef.current = seq;
 
-    if (!value.trim() || !autoCompleteRef.current) {
+    if (!value.trim()) {
       setSuggestions([]);
       setLoading(false);
       setSearched(false);
@@ -105,24 +127,33 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
 
     setSearched(true);
     setLoading(true);
-    autoCompleteRef.current.search(value.trim(), (status: string, result: any) => {
+    ensureSearchReady().then(() => {
       if (seq !== searchSeqRef.current) return;
-      setLoading(false);
-
-      if (status === "complete" && result.info === "OK") {
-        const tips = (result.tips || [])
-          .filter((item: any) => item.name && item.name !== "undefined")
-          .map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            district: item.district,
-            address: item.address,
-            location: normalizePoiLocation(item.location),
-          }));
-        setSuggestions(tips);
-      } else {
+      if (!autoCompleteRef.current) {
+        setLoading(false);
         setSuggestions([]);
+        return;
       }
+
+      autoCompleteRef.current.search(value.trim(), (status: string, result: any) => {
+        if (seq !== searchSeqRef.current) return;
+        setLoading(false);
+
+        if (status === "complete" && result.info === "OK") {
+          const tips = (result.tips || [])
+            .filter((item: any) => item.name && item.name !== "undefined")
+            .map((item: any) => ({
+              id: item.id,
+              name: item.name,
+              district: item.district,
+              address: item.address,
+              location: normalizePoiLocation(item.location),
+            }));
+          setSuggestions(tips);
+        } else {
+          setSuggestions([]);
+        }
+      });
     });
   };
 
@@ -165,10 +196,10 @@ const SearchBox = ({ onSelectPoi }: SearchBoxProps) => {
       <Input
         className="search-input"
         prefix={<SearchOutlined />}
-        placeholder={ready ? "搜索城市、景点或地址" : "地图搜索加载中"}
+        placeholder={ready || !initializing ? "搜索城市、景点或地址" : "地图搜索加载中"}
         value={keyword}
         onChange={(event) => handleSearch(event.target.value)}
-        disabled={!ready}
+        onFocus={ensureSearchReady}
         size="large"
         aria-label="搜索地点"
         aria-expanded={showResults}

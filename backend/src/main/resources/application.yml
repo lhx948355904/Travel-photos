@@ -43,6 +43,7 @@ cos:
   cdn-domain: ${COS_CDN_DOMAIN:}
   local-upload-dir: ${LOCAL_UPLOAD_DIR:data/uploads}
   local-public-path: ${LOCAL_PUBLIC_PATH:/uploads}
+  local-upload-enabled: ${COS_LOCAL_UPLOAD_ENABLED:false}
   local-fallback-enabled: ${COS_LOCAL_FALLBACK_ENABLED:true}
   public-read-acl-enabled: ${COS_PUBLIC_READ_ACL_ENABLED:true}
   connect-timeout-millis: ${COS_CONNECT_TIMEOUT_MILLIS:10000}

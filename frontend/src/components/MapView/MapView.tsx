@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { useAmap } from "../../hooks/useAmap";
 import type { Location } from "../../types";
 import { getMarkerThumbnailUrl } from "../../utils/image";
@@ -43,8 +43,18 @@ const MapView = ({
   const markersRef = useRef<any[]>([]);
   const searchMarkerRef = useRef<any>(null);
   const clusterRef = useRef<any>(null);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  const onMapClickRef = useRef(onMapClick);
   const map = mapRef.current;
   const AMap = (window as any).AMap;
+
+  useEffect(() => {
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMarkerClick]);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
 
   const createMarkerContent = useCallback((location: Location) => {
     const thumbUrl = getMarkerThumbnailUrl(location.coverThumbUrl || "");
@@ -88,77 +98,97 @@ const MapView = ({
   }, []);
 
   useEffect(() => {
-    if (!map || !isReady) return;
+    if (!map || !isReady || !AMap) return;
 
-    if (clusterRef.current) {
-      clusterRef.current.setMap(null);
-      clusterRef.current = null;
-    }
-    markersRef.current.forEach((marker) => marker.setMap(null));
-    markersRef.current = [];
+    let cancelled = false;
+    let frameId: number | null = null;
+
+    const clearMapMarkers = () => {
+      if (clusterRef.current) {
+        clusterRef.current.setMap(null);
+        clusterRef.current = null;
+      }
+      markersRef.current.forEach((marker) => marker.setMap(null));
+      markersRef.current = [];
+    };
+
+    clearMapMarkers();
 
     if (locations.length === 0) return;
 
-    const validLocations = locations
-      .map((location) => ({
-        location,
-        position: getLocationPosition(location),
-      }))
-      .filter(
-        (item): item is { location: Location; position: [number, number] } =>
-          item.position !== null,
-      );
+    frameId = window.requestAnimationFrame(() => {
+      if (cancelled) return;
 
-    if (validLocations.length === 0) return;
+      const validLocations = locations
+        .map((location) => ({
+          location,
+          position: getLocationPosition(location),
+        }))
+        .filter(
+          (item): item is { location: Location; position: [number, number] } =>
+            item.position !== null,
+        );
 
-    if (validLocations.length !== locations.length) {
-      console.warn(
-        "Some locations were skipped because their coordinates are invalid.",
-        locations,
-      );
-    }
+      if (validLocations.length === 0) return;
 
-    const markers = validLocations.map(({ location, position }) => {
-      const marker = new AMap.Marker({
-        position,
-        content: createMarkerContent(location),
-        offset: new AMap.Pixel(-28, -28),
-        extData: location,
+      if (validLocations.length !== locations.length) {
+        console.warn(
+          "Some locations were skipped because their coordinates are invalid.",
+          locations,
+        );
+      }
+
+      const markers = validLocations.map(({ location, position }) => {
+        const marker = new AMap.Marker({
+          position,
+          content: createMarkerContent(location),
+          offset: new AMap.Pixel(-28, -28),
+          extData: location,
+        });
+
+        marker.on("click", () => {
+          onMarkerClickRef.current(location);
+        });
+
+        return marker;
       });
 
-      marker.on("click", () => {
-        onMarkerClick(location);
-      });
+      markersRef.current = markers;
 
-      return marker;
+      if (markers.length > 20) {
+        AMap.plugin(["AMap.MarkerCluster"], () => {
+          if (cancelled) return;
+          clusterRef.current = new AMap.MarkerCluster(map, markers, {
+            gridSize: 60,
+            renderClusterMarker: (context: any) => {
+              const count = context.count;
+              const div = document.createElement("div");
+              div.className = "cluster-marker";
+              div.textContent = count;
+              context.marker.setContent(div);
+            },
+          });
+        });
+      } else {
+        map.add(markers);
+      }
+
+      if (validLocations.length === 1) {
+        map.setZoomAndCenter(12, validLocations[0].position, true);
+        return;
+      }
+
+      map.setFitView(markers, true, [60, 60, 60, 60]);
     });
 
-    markersRef.current = markers;
-
-    if (markers.length > 20) {
-      AMap.plugin(["AMap.MarkerCluster"], () => {
-        clusterRef.current = new AMap.MarkerCluster(map, markers, {
-          gridSize: 60,
-          renderClusterMarker: (context: any) => {
-            const count = context.count;
-            const div = document.createElement("div");
-            div.className = "cluster-marker";
-            div.textContent = count;
-            context.marker.setContent(div);
-          },
-        });
-      });
-    } else {
-      map.add(markers);
-    }
-
-    if (validLocations.length === 1) {
-      map.setZoomAndCenter(12, validLocations[0].position);
-      return;
-    }
-
-    map.setFitView(markers, false, [60, 60, 60, 60]);
-  }, [map, isReady, locations, onMarkerClick, createMarkerContent]);
+    return () => {
+      cancelled = true;
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      clearMapMarkers();
+    };
+  }, [map, isReady, locations, AMap, createMarkerContent]);
 
   useEffect(() => {
     if (!map || !isReady || !focusPosition) return;
@@ -181,11 +211,11 @@ const MapView = ({
       anchor: "bottom-center",
     });
     marker.on("click", () => {
-      onMapClick?.(lng, lat);
+      onMapClickRef.current?.(lng, lat);
     });
     marker.setMap(map);
     searchMarkerRef.current = marker;
-  }, [map, isReady, focusPosition, onMapClick]);
+  }, [map, isReady, focusPosition]);
 
   useEffect(() => {
     if (!map || !isReady || !canCreateLocation) return;
@@ -193,14 +223,14 @@ const MapView = ({
     const clickHandler = (event: any) => {
       const lng = event.lnglat.getLng();
       const lat = event.lnglat.getLat();
-      onMapClick?.(lng, lat);
+      onMapClickRef.current?.(lng, lat);
     };
 
     map.on("click", clickHandler);
     return () => {
       map.off("click", clickHandler);
     };
-  }, [map, isReady, canCreateLocation, onMapClick]);
+  }, [map, isReady, canCreateLocation]);
 
   return (
     <div
@@ -216,4 +246,4 @@ const MapView = ({
   );
 };
 
-export default MapView;
+export default memo(MapView);

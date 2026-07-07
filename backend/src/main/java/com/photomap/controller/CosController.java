@@ -22,11 +22,6 @@ public class CosController {
     private final CosStsService cosStsService;
     private final SiteOwnerService siteOwnerService;
 
-    @GetMapping("/credential")
-    public ApiResponse<CosCredentialResponse> getCredential() {
-        return ApiResponse.success(cosStsService.getCredential(siteOwnerService.getOwnerId()));
-    }
-
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<CosUploadResponse> upload(@RequestParam("file") MultipartFile file) {
         return ApiResponse.success(cosStsService.uploadFile(siteOwnerService.getOwnerId(), file));

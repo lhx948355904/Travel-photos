@@ -97,6 +97,9 @@ public class CosStsService {
         String format = validateImage(file);
 
         String key = createObjectKey(userId, file.getOriginalFilename(), format);
+        if (cosProperties.isLocalUploadEnabled()) {
+            return uploadLocalFile(file, key, "stored locally because local upload mode is enabled");
+        }
         if (!hasCosConfig()) {
             return uploadLocalFile(file, key, "stored locally because COS config is incomplete");
         }

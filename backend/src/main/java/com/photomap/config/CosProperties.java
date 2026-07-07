@@ -15,6 +15,7 @@ public class CosProperties {
     private String cdnDomain;
     private String localUploadDir = "data/uploads";
     private String localPublicPath = "/uploads";
+    private boolean localUploadEnabled = false;
     private boolean localFallbackEnabled = true;
     private boolean publicReadAclEnabled = true;
     private int connectTimeoutMillis = 10000;
