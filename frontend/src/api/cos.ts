@@ -1,5 +1,5 @@
 import request from "./request";
-import type { CosCredential, CosUploadResult } from "../types";
+import type { CosUploadResult } from "../types";
 
 interface UploadOptions {
   onProgress?: (percent: number) => void;
