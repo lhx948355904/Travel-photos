@@ -4,6 +4,7 @@ import {
   CompassOutlined,
   EnvironmentOutlined,
   FieldTimeOutlined,
+  GlobalOutlined,
   MailOutlined,
   MenuOutlined,
   PhoneOutlined,
@@ -206,6 +207,10 @@ const Home = () => {
     navigate("/login");
   }, [navigate]);
 
+  const enterUniverse = useCallback(() => {
+    navigate("/universe");
+  }, [navigate]);
+
   const handleVideoSwitch = (index: number) => {
     if (index === activeVideo || isTransitioning) return;
 
@@ -297,6 +302,9 @@ const Home = () => {
                   {item}
                 </button>
               ))}
+              <button type="button" onClick={enterUniverse}>
+                照片宇宙
+              </button>
               <button
                 type="button"
                 className="landing-nav__cta"
@@ -341,6 +349,17 @@ const Home = () => {
                   {item}
                 </button>
               ))}
+              <button
+                type="button"
+                style={{ "--delay": "290ms" } as CSSProperties}
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  enterUniverse();
+                }}
+              >
+                <GlobalOutlined />
+                照片宇宙
+              </button>
               <button
                 type="button"
                 className="landing-mobile-menu__cta"

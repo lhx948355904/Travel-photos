@@ -9,6 +9,7 @@ import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
 import com.qcloud.cos.auth.COSCredentials;
 import com.qcloud.cos.exception.CosServiceException;
+import com.qcloud.cos.http.HttpMethodName;
 import com.qcloud.cos.model.CannedAccessControlList;
 import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.model.PutObjectRequest;
@@ -31,9 +32,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Set;
@@ -211,7 +215,21 @@ public class CosStsService {
         if (!hasCosConfig()) {
             return fallbackUrl;
         }
-        return buildPublicUrl(key);
+        COSClient cosClient = createClient();
+        try {
+            Date expiration = Date.from(Instant.now().plus(Duration.ofHours(2)));
+            return cosClient.generatePresignedUrl(
+                    cosProperties.getBucket(),
+                    key,
+                    expiration,
+                    HttpMethodName.GET
+            ).toString();
+        } catch (Exception e) {
+            log.warn("Failed to create signed photo URL, key={}, message={}", key, e.getMessage());
+            return buildPublicUrl(key);
+        } finally {
+            cosClient.shutdown();
+        }
     }
 
     private void validateCosConfig() {

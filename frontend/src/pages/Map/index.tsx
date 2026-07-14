@@ -6,6 +6,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   EnvironmentOutlined,
+  GlobalOutlined,
   LoginOutlined,
   LogoutOutlined,
   PlusOutlined,
@@ -266,6 +267,9 @@ const Map = () => {
             <span className="map-mode-pill">
               {isAdmin ? "管理员模式" : "公开浏览"}
             </span>
+            <Button icon={<GlobalOutlined />} onClick={() => navigate("/universe")}>
+              照片宇宙
+            </Button>
             {isAdmin ? (
               <>
                 <Button
