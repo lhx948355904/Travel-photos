@@ -1,6 +1,9 @@
 # Environment variables
 .env
 
+# TLS certificates and private keys
+nginx/certs/
+
 # Database data
 pgdata/
 backend/data/
