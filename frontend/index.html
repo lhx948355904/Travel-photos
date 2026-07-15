@@ -15,5 +15,20 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 </body>
+<script>
+    class EventBus {
+
+    }
+    const bus = new Proxy(EventBus, {
+        get(t, v) {
+            console.log(t, v)
+            return t[v]
+        },
+        set(t, v) {
+            console.log(t, v)
+        }
+    })
+    console.log(bus.a)
+</script>
 
 </html>

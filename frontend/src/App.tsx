@@ -4,7 +4,6 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Map from "./pages/Map";
 import Test from "./pages/Test";
-import { ModalContainer } from "./pages/Test/Modal";
 
 const Universe = lazy(() => import("./pages/Universe"));
 
@@ -31,7 +30,6 @@ function App() {
         <Route path="/test" element={<Test />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <ModalContainer />
       <a
         className="icp-footer-link"
         href={ICP_BEIAN_URL}
