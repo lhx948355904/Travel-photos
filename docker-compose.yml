@@ -33,6 +33,7 @@ services:
         # Preserve BCrypt hashes and other secrets containing "$" verbatim.
         format: raw
     environment:
+      SPRING_PROFILES_ACTIVE: production
       DB_URL: jdbc:postgresql://db:5432/photomap
       DB_DRIVER: org.postgresql.Driver
       DB_HOST: db

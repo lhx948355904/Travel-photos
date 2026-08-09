@@ -76,6 +76,56 @@ fi
 echo "[deploy] rebuilding and restarting containers"
 docker compose up -d --build --remove-orphans
 
+echo "[deploy] verifying blog storage uses PostgreSQL"
+backend_db_url="$(docker compose exec -T backend printenv DB_URL | tr -d '\r')"
+case "$backend_db_url" in
+  jdbc:postgresql:*) ;;
+  *)
+    echo "[deploy] backend is not using PostgreSQL; refusing to finish deployment"
+    exit 1
+    ;;
+esac
+
+blog_row_count="$(
+  docker compose exec -T db sh -lc \
+    'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -Atc "SELECT COUNT(*) FROM blog_post;"' \
+    | tr -d '\r'
+)"
+
+flyway_v3_count="$(
+  docker compose exec -T db sh -lc \
+    'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -Atc "SELECT COUNT(*) FROM flyway_schema_history WHERE version = CAST(3 AS VARCHAR) AND success;"' \
+    | tr -d '\r'
+)"
+
+if [ "$flyway_v3_count" -lt 1 ]; then
+  echo "[deploy] Flyway V3 knowledge-blog migration is missing"
+  exit 1
+fi
+
+blog_api_ready=false
+for attempt in $(seq 1 20); do
+  response="$(
+    docker compose exec -T frontend \
+      wget -qO- 'http://backend:8080/api/blog/posts?page=1&pageSize=1' 2>/dev/null \
+      || true
+  )"
+  if printf '%s' "$response" | grep -q '"code":0'; then
+    blog_api_ready=true
+    break
+  fi
+  echo "[deploy] waiting for blog API (${attempt}/20)"
+  sleep 2
+done
+
+if [ "$blog_api_ready" != true ]; then
+  echo "[deploy] blog API did not become ready"
+  docker compose logs --tail=100 backend
+  exit 1
+fi
+
+echo "[deploy] blog storage verified (PostgreSQL rows: ${blog_row_count}, Flyway V3: applied)"
+
 echo "[deploy] pruning unused images"
 docker image prune -f
 
