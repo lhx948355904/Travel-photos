@@ -40,6 +40,8 @@ public class PhotoEmbeddingService {
         embedding.setCaption(caption);
         embedding.setTags(tags);
         embedding.setSearchText(searchText);
+        embedding.setIndexStatus("PENDING");
+        embedding.setRetryCount(0);
         photoEmbeddingMapper.insert(embedding);
     }
 

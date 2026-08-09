@@ -26,6 +26,9 @@
         <cos-sts.version>3.1.1</cos-sts.version>
         <cos-java-sdk.version>5.6.213</cos-java-sdk.version>
         <mybatis-spring.version>3.0.3</mybatis-spring.version>
+        <thrift.version>0.23.0</thrift.version>
+        <maven-thrift-plugin.version>0.1.11</maven-thrift-plugin.version>
+        <thrift.executable>thrift</thrift.executable>
     </properties>
 
     <dependencies>
@@ -70,9 +73,20 @@
             <version>${mybatis-plus.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.mybatis</groupId>
             <artifactId>mybatis-spring</artifactId>
             <version>${mybatis-spring.version}</version>
+        </dependency>
+
+        <!-- Apache Thrift RPC -->
+        <dependency>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
+            <version>${thrift.version}</version>
         </dependency>
 
         <!-- Tencent COS -->
@@ -109,6 +123,25 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.thrift.tools</groupId>
+                <artifactId>maven-thrift-plugin</artifactId>
+                <version>${maven-thrift-plugin.version}</version>
+                <configuration>
+                    <thriftSourceRoot>${project.basedir}/src/main/thrift</thriftSourceRoot>
+                    <thriftExecutable>${thrift.executable}</thriftExecutable>
+                    <generator>java:generated_annotations=suppress</generator>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>generate-thrift-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

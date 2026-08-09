@@ -37,6 +37,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Locale;
@@ -50,8 +51,10 @@ import java.util.UUID;
 public class CosStsService {
 
     private static final long MAX_FILE_SIZE = 20L * 1024L * 1024L;
+    private static final long MAX_BLOG_FILE_SIZE = 10L * 1024L * 1024L;
     private static final long MAX_PIXELS = 40_000_000L;
     private static final Set<String> DECODE_REQUIRED_FORMATS = Set.of("jpg", "jpeg", "png", "gif", "bmp");
+    private static final Set<String> BLOG_FORMATS = Set.of("jpg", "jpeg", "png", "webp");
 
     private final CosProperties cosProperties;
 
@@ -59,7 +62,7 @@ public class CosStsService {
         validateCosConfig();
 
         try {
-            String prefix = createUserPrefix(userId) + "/*";
+            String prefix = createUserPrefix(userId, "photos") + "/*";
 
             TreeMap<String, Object> config = new TreeMap<>();
             config.put("secretId", cosProperties.getSecretId());
@@ -99,8 +102,25 @@ public class CosStsService {
 
     public CosUploadResponse uploadFile(Long userId, MultipartFile file) {
         String format = validateImage(file);
+        return uploadValidatedFile(userId, file, format, "photos");
+    }
 
-        String key = createObjectKey(userId, file.getOriginalFilename(), format);
+    public CosUploadResponse uploadBlogImage(Long userId, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("请选择要上传的博客图片");
+        }
+        if (file.getSize() > MAX_BLOG_FILE_SIZE) {
+            throw new BusinessException("博客图片大小不能超过 10MB");
+        }
+        String format = validateImage(file);
+        if (!BLOG_FORMATS.contains(format)) {
+            throw new BusinessException("博客图片仅支持 JPG、PNG 和 WebP");
+        }
+        return uploadValidatedFile(userId, file, format, "blog");
+    }
+
+    private CosUploadResponse uploadValidatedFile(Long userId, MultipartFile file, String format, String namespace) {
+        String key = createObjectKey(userId, file.getOriginalFilename(), format, namespace);
         if (cosProperties.isLocalUploadEnabled()) {
             return uploadLocalFile(file, key, "stored locally because local upload mode is enabled");
         }
@@ -230,6 +250,35 @@ public class CosStsService {
         } finally {
             cosClient.shutdown();
         }
+    }
+
+    public String resolveAiImageInput(String key, String preferredUrl) {
+        if (!StringUtils.hasText(key)) {
+            throw new BusinessException("照片对象 Key 为空，无法建立 AI 索引");
+        }
+        if (localObjectExists(key)) {
+            Path localPath = resolveLocalPath(key);
+            try {
+                long size = Files.size(localPath);
+                if (size > 10L * 1024L * 1024L) {
+                    throw new BusinessException("本地照片超过 AI 模型 10MB 限制，请先压缩");
+                }
+                byte[] bytes = Files.readAllBytes(localPath);
+                String mimeType = Files.probeContentType(localPath);
+                if (!StringUtils.hasText(mimeType)) {
+                    mimeType = "image/jpeg";
+                }
+                return "data:" + mimeType + ";base64," + Base64.getEncoder().encodeToString(bytes);
+            } catch (IOException e) {
+                throw new BusinessException("读取本地照片用于 AI 索引失败");
+            }
+        }
+        if (cosProperties.isPublicReadAclEnabled()
+                && StringUtils.hasText(preferredUrl)
+                && (preferredUrl.startsWith("https://") || preferredUrl.startsWith("http://"))) {
+            return preferredUrl;
+        }
+        return resolvePublicUrl(key, preferredUrl);
     }
 
     private void validateCosConfig() {
@@ -403,8 +452,8 @@ public class CosStsService {
                 || value.equals("hevx") || value.equals("mif1") || value.equals("msf1");
     }
 
-    private String createObjectKey(Long userId, String originalFilename, String detectedFormat) {
-        String prefix = createUserPrefix(userId);
+    private String createObjectKey(Long userId, String originalFilename, String detectedFormat, String namespace) {
+        String prefix = createUserPrefix(userId, namespace);
         String ext = StringUtils.hasText(detectedFormat) ? detectedFormat : "jpg";
         if ("jpg".equals(ext) && StringUtils.hasText(originalFilename)
                 && originalFilename.toLowerCase(Locale.ROOT).endsWith(".jpeg")) {
@@ -413,8 +462,9 @@ public class CosStsService {
         return prefix + "/" + System.currentTimeMillis() + "_" + UUID.randomUUID() + "." + ext;
     }
 
-    private String createUserPrefix(Long userId) {
-        return "users/" + userId + "/photos/" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
+    private String createUserPrefix(Long userId, String namespace) {
+        return "users/" + userId + "/" + namespace + "/"
+                + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
     }
 
     private String buildPublicUrl(String key) {

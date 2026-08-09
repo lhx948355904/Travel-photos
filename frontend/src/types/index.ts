@@ -71,3 +71,35 @@ export interface SearchPhotoResult {
   tags?: string
   score: number
 }
+
+export type RagSearchMode = 'rag' | 'semantic' | 'keyword'
+
+export interface PhotoIndexCoverage {
+  ready: number
+  total: number
+}
+
+export interface RagPhotoSearchResponse {
+  answer: string | null
+  mode: RagSearchMode
+  citationPhotoIds: number[]
+  evidence: SearchPhotoResult[]
+  indexCoverage: PhotoIndexCoverage
+  warning: string | null
+  requestId: string
+}
+
+export interface PhotoIndexStatus {
+  total: number
+  ready: number
+  pending: number
+  processing: number
+  failed: number
+  lastIndexedAt: string | null
+  aiEnabled: boolean
+  providerReady: boolean
+}
+
+export interface PhotoIndexRebuildResult {
+  queued: number
+}

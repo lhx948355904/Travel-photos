@@ -10,6 +10,7 @@ import {
   RightOutlined,
 } from "@ant-design/icons";
 import type { Location } from "../../types";
+import { resolveInitialPhotoIndex } from "./galleryState";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -20,12 +21,14 @@ interface FullscreenGalleryProps {
   location: Location | null;
   open: boolean;
   onClose: () => void;
+  initialPhotoId?: number | null;
 }
 
 const FullscreenGallery = ({
   location,
   open,
   onClose,
+  initialPhotoId,
 }: FullscreenGalleryProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [thumbsSwiper, setThumbsSwiper] = useState<SwiperType | null>(null);
@@ -33,18 +36,22 @@ const FullscreenGallery = ({
 
   const photos = location?.photos || [];
   const hasPhotos = photos.length > 0;
+  const initialIndex = resolveInitialPhotoIndex(photos, initialPhotoId);
 
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
-      setActiveIndex(0);
+      setActiveIndex(initialIndex);
+      window.requestAnimationFrame(() => {
+        mainSwiperRef.current?.slideTo(initialIndex, 0);
+      });
     } else {
       document.body.style.overflow = "";
     }
     return () => {
       document.body.style.overflow = "";
     };
-  }, [open]);
+  }, [initialIndex, open]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -99,6 +106,7 @@ const FullscreenGallery = ({
 
           {hasPhotos ? (
             <Swiper
+              initialSlide={initialIndex}
               modules={[Navigation, Zoom, Keyboard, Thumbs]}
               onSwiper={(swiper) => {
                 mainSwiperRef.current = swiper;

@@ -165,7 +165,13 @@ const cinematicStories: StoryBase[] = [
 const overlayImage =
   "https://soft-zoom-63098134.figma.site/_assets/v11/0b4a435b2df2747593c43d7a1c9b4578f7d8d90c.png";
 
-const navLinks = ["地图故事", "照片归档", "技术栈", "维护入口"];
+const navLinks = [
+  { label: "地图故事", path: "/map", action: "navigate" as const },
+  { label: "照片归档", path: "/map", action: "navigate" as const },
+  { label: "技术栈", path: "/map", action: "navigate" as const },
+  { label: "知识博客", path: "/blog", action: "navigate" as const },
+  { label: "维护入口", path: "/login", action: "navigate" as const },
+];
 
 const baseStats = [
   "React 18 + TypeScript",
@@ -203,13 +209,13 @@ const Home = () => {
     navigate("/map");
   }, [navigate]);
 
-  const enterLogin = useCallback(() => {
-    navigate("/login");
-  }, [navigate]);
-
   const enterUniverse = useCallback(() => {
     navigate("/universe");
   }, [navigate]);
+
+  const handleNavItem = (item: (typeof navLinks)[number]) => {
+    if (item.action === "navigate") navigate(item.path);
+  };
 
   const handleVideoSwitch = (index: number) => {
     if (index === activeVideo || isTransitioning) return;
@@ -295,11 +301,11 @@ const Home = () => {
             >
               {navLinks.map((item) => (
                 <button
-                  key={item}
+                  key={item.label}
                   type="button"
-                  onClick={item === "维护入口" ? enterLogin : enterMap}
+                  onClick={() => handleNavItem(item)}
                 >
-                  {item}
+                  {item.label}
                 </button>
               ))}
               <button type="button" onClick={enterUniverse}>
@@ -336,17 +342,17 @@ const Home = () => {
             <nav className="landing-mobile-menu__panel" aria-label="移动端导航">
               {navLinks.map((item, index) => (
                 <button
-                  key={item}
+                  key={item.label}
                   type="button"
                   style={
                     { "--delay": `${100 + index * 50}ms` } as CSSProperties
                   }
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    item === "维护入口" ? enterLogin() : enterMap();
+                    handleNavItem(item);
                   }}
                 >
-                  {item}
+                  {item.label}
                 </button>
               ))}
               <button

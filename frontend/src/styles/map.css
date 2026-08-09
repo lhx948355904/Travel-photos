@@ -464,15 +464,68 @@ body:has(.login-page) {
   color: rgba(255, 255, 255, 0.58);
 }
 
+.photo-search-heading,
+.photo-search-heading__status,
+.photo-rag-answer__meta,
+.photo-index-admin__summary,
+.photo-index-admin__actions {
+  display: flex;
+  align-items: center;
+}
+
+.photo-search-heading {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.photo-search-heading__status {
+  gap: 5px;
+  color: var(--map-white-68);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.photo-search-intro {
+  margin: -2px 0 0;
+  color: var(--map-white-68);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.photo-query-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.photo-query-examples button {
+  min-height: 28px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 5px 9px;
+  color: var(--map-white-82);
+  background: rgba(255, 255, 255, 0.09);
+  font-size: 11px;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.photo-query-examples button:hover,
+.photo-query-examples button:focus-visible {
+  outline: 2px solid var(--map-white-48);
+  outline-offset: 1px;
+  color: var(--map-white);
+  background: rgba(255, 255, 255, 0.14);
+}
+
 .photo-search-results {
   min-height: 0;
-  max-height: 190px;
+  max-height: 410px;
   display: grid;
   gap: 8px;
   overflow: auto;
 }
 
-.photo-search-status,
 .photo-search-empty {
   min-height: 42px;
   display: flex;
@@ -480,6 +533,78 @@ body:has(.login-page) {
   gap: 8px;
   color: var(--map-white-68);
   font-size: 13px;
+}
+
+.photo-search-skeleton,
+.photo-search-error,
+.photo-rag-answer {
+  border-radius: 14px;
+  padding: 11px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.photo-search-skeleton > span {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--map-white-68);
+  font-size: 12px;
+}
+
+.photo-search-skeleton .ant-skeleton-title,
+.photo-search-skeleton .ant-skeleton-paragraph > li {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.photo-search-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #ffe4e4;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.photo-search-error .ant-btn {
+  flex: none;
+}
+
+.photo-rag-answer {
+  display: grid;
+  gap: 7px;
+}
+
+.photo-rag-answer__meta {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.photo-rag-answer__meta strong {
+  color: var(--map-white);
+  font-size: 12px;
+}
+
+.photo-rag-answer__meta span {
+  color: var(--map-white-68);
+  font-size: 10px;
+}
+
+.photo-rag-answer p,
+.photo-rag-answer small {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.photo-rag-answer p {
+  color: var(--map-white);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.photo-rag-answer small {
+  color: var(--map-white-68);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .photo-result {
@@ -532,14 +657,96 @@ body:has(.login-page) {
 }
 
 .photo-result strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--map-white);
   font-size: 13px;
   font-weight: 760;
 }
 
+.photo-result strong em {
+  min-width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  color: var(--map-ink);
+  background: var(--map-white);
+  font-size: 10px;
+  font-style: normal;
+}
+
 .photo-result small {
   color: var(--map-white-68);
   font-size: 12px;
+}
+
+.photo-index-admin {
+  display: grid;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid var(--map-white-14);
+}
+
+.photo-index-admin__summary {
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--map-white-82);
+  font-size: 12px;
+}
+
+.photo-index-admin__summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.photo-index-admin__summary small {
+  border-radius: var(--radius-pill);
+  padding: 2px 6px;
+  color: #ffe6b3;
+  background: rgba(255, 181, 62, 0.14);
+  font-size: 9px;
+}
+
+.photo-index-admin__summary strong {
+  color: var(--map-white);
+  font-size: 12px;
+}
+
+.photo-index-progress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.photo-index-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--map-white);
+  transition: width 220ms var(--map-ease);
+}
+
+.photo-index-admin p {
+  margin: 0;
+  color: var(--map-white-68);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.photo-index-admin__actions {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.photo-index-admin__actions .ant-btn {
+  min-height: 30px;
+  border-color: var(--map-white-14);
+  color: var(--map-white-82);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .activity-panel-header {

@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { get as httpsGet } from 'node:https'
@@ -42,34 +42,39 @@ const cosMediaDevProxy = (): Plugin => ({
   },
 })
 
-export default defineConfig({
-  plugins: [react(), cosMediaDevProxy()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  server: {
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true,
-        timeout: 120000,
-        proxyTimeout: 120000,
-      },
-      '/ws': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true,
-        ws: true,
-      },
-      '/uploads': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const apiTarget = env.VITE_DEV_API_TARGET || 'http://127.0.0.1:8080'
+
+  return {
+    plugins: [react(), cosMediaDevProxy()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
       },
     },
-  },
-  build: {
-    outDir: 'dist',
-  },
+    server: {
+      port: 3000,
+      proxy: {
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+          timeout: 120000,
+          proxyTimeout: 120000,
+        },
+        '/ws': {
+          target: apiTarget,
+          changeOrigin: true,
+          ws: true,
+        },
+        '/uploads': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+      },
+    },
+    build: {
+      outDir: 'dist',
+    },
+  }
 })

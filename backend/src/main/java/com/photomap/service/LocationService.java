@@ -30,6 +30,7 @@ public class LocationService {
     private final LocationMapper locationMapper;
     private final PhotoMapper photoMapper;
     private final PhotoEmbeddingService photoEmbeddingService;
+    private final PhotoIndexRepository photoIndexRepository;
     private final CosStsService cosStsService;
 
     public List<LocationVO> listLocations(Long userId, String bbox) {
@@ -136,6 +137,7 @@ public class LocationService {
         }
 
         locationMapper.updateById(location);
+        photoIndexRepository.requeueLocation(userId, id);
     }
 
     @Transactional

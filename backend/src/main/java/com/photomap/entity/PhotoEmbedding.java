@@ -32,6 +32,30 @@ public class PhotoEmbedding {
     @TableField("search_text")
     private String searchText;
 
+    @TableField("index_status")
+    private String indexStatus;
+
+    @TableField("analysis_model")
+    private String analysisModel;
+
+    @TableField("embedding_model")
+    private String embeddingModel;
+
+    @TableField("retry_count")
+    private Integer retryCount;
+
+    @TableField("index_error")
+    private String indexError;
+
+    @TableField("content_hash")
+    private String contentHash;
+
+    @TableField("indexed_at")
+    private LocalDateTime indexedAt;
+
+    @TableField("next_retry_at")
+    private LocalDateTime nextRetryAt;
+
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 

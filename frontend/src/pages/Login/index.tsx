@@ -6,7 +6,7 @@ import {
   SafetyCertificateOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { login } from "../../api/auth";
 import { useAuthStore } from "../../store/useAuthStore";
 
@@ -17,15 +17,20 @@ interface LoginFormValues {
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedRedirect = searchParams.get("redirect");
+  const redirect = requestedRedirect?.startsWith("/") && !requestedRedirect.startsWith("//")
+    ? requestedRedirect
+    : "/map";
   const isAdmin = useAuthStore((state) => state.isAdmin);
   const setToken = useAuthStore((state) => state.setToken);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (isAdmin) {
-      navigate("/map", { replace: true });
+      navigate(redirect, { replace: true });
     }
-  }, [isAdmin, navigate]);
+  }, [isAdmin, navigate, redirect]);
 
   const handleSubmit = async (values: LoginFormValues) => {
     setSubmitting(true);
@@ -33,7 +38,7 @@ const Login = () => {
       const result = await login(values);
       setToken(result.token);
       message.success("登录成功");
-      navigate("/map", { replace: true });
+      navigate(redirect, { replace: true });
     } catch (err: any) {
       message.error(err.message || "登录失败，请检查账号和密码");
     } finally {

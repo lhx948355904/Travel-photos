@@ -1,6 +1,9 @@
 services:
   db:
-    image: postgis/postgis:15-3.4
+    build:
+      context: ./database
+      args:
+        PGVECTOR_IMAGE: pgvector/pgvector:0.8.2-pg15-bookworm
     container_name: photomap-db
     restart: unless-stopped
     environment:
@@ -26,7 +29,9 @@ services:
       db:
         condition: service_healthy
     env_file:
-      - .env
+      - path: .env
+        # Preserve BCrypt hashes and other secrets containing "$" verbatim.
+        format: raw
     environment:
       DB_URL: jdbc:postgresql://db:5432/photomap
       DB_DRIVER: org.postgresql.Driver
@@ -35,14 +40,25 @@ services:
       DB_NAME: photomap
       DB_USER: ${DB_USER:-photomap}
       DB_PASSWORD: ${DB_PASSWORD:-photomap123}
+      FLYWAY_ENABLED: "true"
       JWT_SECRET: ${JWT_SECRET:-travel-photo-map-jwt-secret-key-2026}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy}
       LOCAL_UPLOAD_DIR: /app/data/uploads
+      THRIFT_SERVER_HOST: 0.0.0.0
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_PUBLIC_ENABLED: ${AI_PUBLIC_ENABLED:-false}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      DASHSCOPE_BASE_URL: ${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com}
+      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-qwen3-vl-embedding}
+      AI_EMBEDDING_DIMENSION: ${AI_EMBEDDING_DIMENSION:-1024}
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen3-vl-flash}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-qwen3.6-flash}
+      AI_RAG_DAILY_GENERATION_LIMIT: ${AI_RAG_DAILY_GENERATION_LIMIT:-300}
     volumes:
       - ./backend/data:/app/data
     ports:
       - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9090:9090"
 
   frontend:
     build:

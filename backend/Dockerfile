@@ -1,6 +1,7 @@
 # Build stage
 FROM maven:3.9-eclipse-temurin-17-alpine AS builder
 WORKDIR /app
+RUN apk add --no-cache thrift
 COPY pom.xml .
 COPY src ./src
 RUN mvn clean package -DskipTests
@@ -9,5 +10,5 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
-EXPOSE 8080
+EXPOSE 8080 9090
 ENTRYPOINT ["java", "-jar", "app.jar"]
