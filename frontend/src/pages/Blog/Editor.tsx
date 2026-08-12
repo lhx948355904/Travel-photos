@@ -1,17 +1,23 @@
 import {
   BoldOutlined,
+  CheckSquareOutlined,
   CodeOutlined,
   EyeOutlined,
   FileTextOutlined,
+  ItalicOutlined,
   LinkOutlined,
+  MinusOutlined,
   OrderedListOutlined,
   PictureOutlined,
+  RedoOutlined,
   SaveOutlined,
   SendOutlined,
+  StrikethroughOutlined,
   UnorderedListOutlined,
+  UndoOutlined,
 } from '@ant-design/icons'
-import { Button, Input, message, Modal, Progress, Select, Space, Tabs, Tooltip } from 'antd'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Button, Divider, Input, message, Modal, Progress, Select, Space, Tabs, Tooltip } from 'antd'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -24,6 +30,14 @@ import {
 import BlogHeader from '../../components/BlogHeader'
 import BlogMarkdown from '../../components/BlogMarkdown'
 import type { BlogPostInput, BlogStatus } from '../../types/blog'
+import {
+  insertBlock,
+  prefixSelectedLines,
+  toggleInline,
+  wrapSelection,
+  type EditorChange,
+  type EditorSelection,
+} from './editorCommands'
 import { blogDraftKey } from './utils'
 
 const categorySuggestions = ['Java', '前端', '运维', '数据库', 'AI 与工具']
@@ -31,6 +45,7 @@ const emptyInput: BlogPostInput = {
   title: '', excerpt: '', contentMarkdown: '', categoryName: '', tagNames: [], coverAssetId: null,
 }
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+type HistoryEntry = EditorSelection & { value: string }
 
 const BlogEditorPage = () => {
   const { id: routeId } = useParams()
@@ -46,6 +61,10 @@ const BlogEditorPage = () => {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const undoStackRef = useRef<HistoryEntry[]>([])
+  const redoStackRef = useRef<HistoryEntry[]>([])
+  const lastSelectionRef = useRef<EditorSelection>({ start: 0, end: 0 })
+  const [historyVersion, setHistoryVersion] = useState(0)
 
   const storageKey = blogDraftKey(postId || 'new')
   const setField = <K extends keyof BlogPostInput>(key: K, value: BlogPostInput[K]) => {
@@ -180,18 +199,68 @@ const BlogEditorPage = () => {
     }
   }
 
-  const insertMarkdown = (before: string, after = '', placeholder = '文本') => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selected = input.contentMarkdown.slice(start, end) || placeholder
-    const next = `${input.contentMarkdown.slice(0, start)}${before}${selected}${after}${input.contentMarkdown.slice(end)}`
-    setField('contentMarkdown', next)
+  const focusSelection = (selection: EditorSelection) => {
     window.requestAnimationFrame(() => {
+      const textarea = textareaRef.current
+      if (!textarea) return
       textarea.focus()
-      textarea.setSelectionRange(start + before.length, start + before.length + selected.length)
+      textarea.setSelectionRange(selection.start, selection.end)
+      lastSelectionRef.current = selection
     })
+  }
+
+  const currentSelection = (): EditorSelection => {
+    const textarea = textareaRef.current
+    return textarea
+      ? { start: textarea.selectionStart, end: textarea.selectionEnd }
+      : lastSelectionRef.current
+  }
+
+  const recordHistory = (entry: HistoryEntry) => {
+    undoStackRef.current.push(entry)
+    if (undoStackRef.current.length > 200) undoStackRef.current.shift()
+    redoStackRef.current = []
+    setHistoryVersion((version) => version + 1)
+  }
+
+  const applyEditorChange = (change: EditorChange) => {
+    const selection = currentSelection()
+    recordHistory({ value: input.contentMarkdown, ...selection })
+    setField('contentMarkdown', change.value)
+    focusSelection(change)
+  }
+
+  const runCommand = (
+    command: (value: string, selection: EditorSelection) => EditorChange,
+  ) => applyEditorChange(command(input.contentMarkdown, currentSelection()))
+
+  const insertMarkdown = (before: string, after = '', placeholder = '文本') => {
+    runCommand((value, selection) => wrapSelection(value, selection, before, after, placeholder))
+  }
+
+  const undo = () => {
+    const previous = undoStackRef.current.pop()
+    if (!previous) return
+    redoStackRef.current.push({ value: input.contentMarkdown, ...currentSelection() })
+    setField('contentMarkdown', previous.value)
+    focusSelection(previous)
+    setHistoryVersion((version) => version + 1)
+  }
+
+  const redo = () => {
+    const next = redoStackRef.current.pop()
+    if (!next) return
+    undoStackRef.current.push({ value: input.contentMarkdown, ...currentSelection() })
+    setField('contentMarkdown', next.value)
+    focusSelection(next)
+    setHistoryVersion((version) => version + 1)
+  }
+
+  const changeContent = (value: string, selection: EditorSelection) => {
+    if (value === input.contentMarkdown) return
+    recordHistory({ value: input.contentMarkdown, ...lastSelectionRef.current })
+    setField('contentMarkdown', value)
+    lastSelectionRef.current = selection
   }
 
   const uploadImage = async (file: File, asCover = false) => {
@@ -213,16 +282,46 @@ const BlogEditorPage = () => {
   }
 
   const toolbar = useMemo(() => [
-    { label: '二级标题', icon: <FileTextOutlined />, action: () => insertMarkdown('\n## ', '', '标题') },
-    { label: '粗体', icon: <BoldOutlined />, action: () => insertMarkdown('**', '**') },
-    { label: '链接', icon: <LinkOutlined />, action: () => insertMarkdown('[', '](https://)', '链接文字') },
-    { label: '引用', icon: <span>❝</span>, action: () => insertMarkdown('\n> ', '', '引用内容') },
-    { label: '无序列表', icon: <UnorderedListOutlined />, action: () => insertMarkdown('\n- ', '', '列表项') },
-    { label: '有序列表', icon: <OrderedListOutlined />, action: () => insertMarkdown('\n1. ', '', '列表项') },
-    { label: '行内代码', icon: <CodeOutlined />, action: () => insertMarkdown('`', '`', 'code') },
-    { label: '代码块', icon: <span>{'{ }'}</span>, action: () => insertMarkdown('\n```ts\n', '\n```\n', 'const value = true') },
-    { label: '图片', icon: <PictureOutlined />, action: () => fileInputRef.current?.click() },
-  ], [input.contentMarkdown])
+    { label: '撤销', shortcut: 'Ctrl+Z', icon: <UndoOutlined />, action: undo, disabled: undoStackRef.current.length === 0, group: 0 },
+    { label: '重做', shortcut: 'Ctrl+Shift+Z', icon: <RedoOutlined />, action: redo, disabled: redoStackRef.current.length === 0, group: 0 },
+    { label: '二级标题', icon: <FileTextOutlined />, action: () => runCommand((value, selection) => prefixSelectedLines(value, selection, '## ')), group: 1 },
+    { label: '加粗', shortcut: 'Ctrl+B', icon: <BoldOutlined />, action: () => runCommand((value, selection) => toggleInline(value, selection, '**')), group: 1 },
+    { label: '斜体', shortcut: 'Ctrl+I', icon: <ItalicOutlined />, action: () => runCommand((value, selection) => toggleInline(value, selection, '*')), group: 1 },
+    { label: '删除线', icon: <StrikethroughOutlined />, action: () => runCommand((value, selection) => toggleInline(value, selection, '~~')), group: 1 },
+    { label: '链接', icon: <LinkOutlined />, action: () => insertMarkdown('[', '](https://)', '链接文字'), group: 2 },
+    { label: '引用', icon: <span aria-hidden="true">❝</span>, action: () => runCommand((value, selection) => prefixSelectedLines(value, selection, '> ')), group: 2 },
+    { label: '无序列表', icon: <UnorderedListOutlined />, action: () => runCommand((value, selection) => prefixSelectedLines(value, selection, '- ')), group: 2 },
+    { label: '有序列表', icon: <OrderedListOutlined />, action: () => runCommand((value, selection) => prefixSelectedLines(value, selection, (index) => `${index + 1}. `)), group: 2 },
+    { label: '任务列表', icon: <CheckSquareOutlined />, action: () => runCommand((value, selection) => prefixSelectedLines(value, selection, '- [ ] ')), group: 2 },
+    { label: '行内代码', icon: <CodeOutlined />, action: () => runCommand((value, selection) => toggleInline(value, selection, '`', 'code')), group: 3 },
+    { label: '代码块', icon: <span className="blog-code-icon" aria-hidden="true">{'{ }'}</span>, action: () => runCommand((value, selection) => insertBlock(value, selection, '```ts\nconst value = true\n```\n', 6, 18)), group: 3 },
+    { label: '分隔线', icon: <MinusOutlined />, action: () => runCommand((value, selection) => insertBlock(value, selection, '\n---\n', 1, 3)), group: 3 },
+    { label: '图片', icon: <PictureOutlined />, action: () => fileInputRef.current?.click(), group: 4 },
+  ], [historyVersion, input.contentMarkdown])
+
+  const handleEditorKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!(event.ctrlKey || event.metaKey)) return
+    const key = event.key.toLowerCase()
+    if (key === 'z') {
+      event.preventDefault()
+      if (event.shiftKey) redo()
+      else undo()
+    } else if (key === 'y') {
+      event.preventDefault()
+      redo()
+    } else if (key === 'b') {
+      event.preventDefault()
+      runCommand((value, selection) => toggleInline(value, selection, '**'))
+    } else if (key === 'i') {
+      event.preventDefault()
+      runCommand((value, selection) => toggleInline(value, selection, '*'))
+    }
+  }
+
+  const contentStats = useMemo(() => ({
+    characters: input.contentMarkdown.replace(/\s/g, '').length,
+    lines: input.contentMarkdown ? input.contentMarkdown.split('\n').length : 0,
+  }), [input.contentMarkdown])
 
   if (loading) return <main className="blog-editor-page"><BlogHeader tone="light" /><div className="blog-editor-loading">正在打开编辑器…</div></main>
 
@@ -261,16 +360,30 @@ const BlogEditorPage = () => {
       <div className={`blog-editor-workspace show-${mobileMode}`}>
         <section className="blog-editor-pane" aria-label="Markdown 编辑区">
           <div className="blog-editor-toolbar">
-            {toolbar.map((item) => <Tooltip title={item.label} key={item.label}><Button type="text" icon={item.icon} onClick={item.action} aria-label={item.label} /></Tooltip>)}
+            {toolbar.map((item, index) => <Fragment key={item.label}>
+              {index > 0 && toolbar[index - 1].group !== item.group && <Divider type="vertical" />}
+              <Tooltip
+                title={<span>{item.label}{item.shortcut && <kbd>{item.shortcut}</kbd>}</span>}
+                classNames={{ root: 'blog-editor-tooltip' }}
+              >
+                <Button type="text" icon={item.icon} onClick={item.action} disabled={item.disabled} aria-label={item.label} />
+              </Tooltip>
+            </Fragment>)}
           </div>
           <Input.TextArea
             ref={(node) => { textareaRef.current = node?.resizableTextArea?.textArea || null }}
             value={input.contentMarkdown}
-            onChange={(event) => setField('contentMarkdown', event.target.value)}
+            onChange={(event) => changeContent(event.target.value, { start: event.target.selectionStart, end: event.target.selectionEnd })}
+            onSelect={(event) => { lastSelectionRef.current = { start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd } }}
+            onKeyDown={handleEditorKeyDown}
             placeholder={'从一个清晰的问题开始。\n\n## 它是什么\n\n写下你的理解、代码和验证过程。'}
             className="blog-markdown-input"
             spellCheck={false}
           />
+          <div className="blog-editor-statusbar" aria-live="polite">
+            <span>{contentStats.characters} 字 · {contentStats.lines} 行</span>
+            <span>Markdown · Ctrl+S 保存</span>
+          </div>
           <input ref={fileInputRef} type="file" hidden accept="image/jpeg,image/png,image/webp"
             onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file) }} />
           {uploadProgress !== null && <div className="blog-upload-progress"><span>正在上传图片</span><Progress percent={uploadProgress} size="small" /></div>}

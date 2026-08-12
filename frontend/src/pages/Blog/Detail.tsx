@@ -56,19 +56,7 @@ const BlogDetailPage = () => {
     )
   }
 
-  const { post, headings, relatedPosts } = detail
-  const toc = (
-    <nav className="blog-toc" aria-label="文章目录">
-      <span>ON THIS PAGE</span>
-      <ol>
-        {headings.map((heading) => (
-          <li key={heading.id} className={`level-${heading.level}`}>
-            <a href={`#${heading.id}`}>{heading.text}</a>
-          </li>
-        ))}
-      </ol>
-    </nav>
-  )
+  const { post, relatedPosts } = detail
 
   return (
     <main className="blog-article-page">
@@ -103,10 +91,8 @@ const BlogDetailPage = () => {
         {post.coverUrl && <figure className="blog-article-cover"><img src={post.coverUrl} alt="" /></figure>}
       </header>
 
-      {headings.length > 0 && <details className="blog-toc-mobile"><summary>文章目录</summary>{toc}</details>}
       <div className="blog-article-layout">
         <article className="blog-article-content"><BlogMarkdown content={detail.contentMarkdown} /></article>
-        {headings.length > 0 && <aside className="blog-toc-desktop">{toc}</aside>}
       </div>
 
       <footer className="blog-article-footer">
