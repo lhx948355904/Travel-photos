@@ -78,9 +78,7 @@ const BlogDetailPage = () => {
           <Link to="/"><HomeOutlined /> 首页</Link><span>/</span><Link to="/blog">知识博客</Link><span>/</span><span>{post.category?.name}</span>
         </div>
         <div className="blog-article-heading">
-          <span className="blog-post-category">{post.category?.name || '未分类'}</span>
           <h1>{post.title}</h1>
-          <p>{post.excerpt}</p>
           <div className="blog-article-meta">
             <time>{formatBlogDate(post.publishedAt)}</time>
             <span><ClockCircleOutlined /> {post.readingTimeMinutes} 分钟阅读</span>
@@ -88,7 +86,6 @@ const BlogDetailPage = () => {
           </div>
           <div className="blog-inline-tags">{post.tags.map((tag) => <span key={tag.id}>#{tag.name}</span>)}</div>
         </div>
-        {post.coverUrl && <figure className="blog-article-cover"><img src={post.coverUrl} alt="" /></figure>}
       </header>
 
       <div className="blog-article-layout">
@@ -96,7 +93,13 @@ const BlogDetailPage = () => {
       </div>
 
       <footer className="blog-article-footer">
-        <Link className="blog-back-link" to="/blog"><ArrowLeftOutlined /> 返回全部文章</Link>
+        <div className="blog-article-end">
+          <div>
+            <span>阅读完毕</span>
+            <strong>继续探索更多技术文章</strong>
+          </div>
+          <Link className="blog-back-link" to="/blog"><ArrowLeftOutlined /> 返回文章列表</Link>
+        </div>
         {relatedPosts.length > 0 && (
           <section className="blog-related">
             <span>KEEP READING</span><h2>继续阅读</h2>

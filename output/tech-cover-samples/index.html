@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>技术文章封面样式</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #d9d8d3; }
+    body { font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif; color: #101828; }
+    .gallery { width: 1440px; margin: 0 auto; padding: 72px; display: grid; gap: 56px; }
+    .cover { position: relative; width: 1296px; height: 729px; overflow: hidden; box-shadow: 0 24px 70px #17203333; }
+    .kicker { font: 700 18px/1.2 Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 0; font-weight: 800; letter-spacing: -.055em; }
+
+    /* A — 工程流程图：最适合教程、原理拆解 */
+    .a { background: #f6f0e6; }
+    .a .visual { position: absolute; inset: 0; background: url("assets/domain-render-journey.png") center/cover; }
+    .a::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #f7f1e9 0%, #f7f1e9f2 40%, #f7f1e966 60%, transparent 76%); }
+    .a .copy { position: absolute; z-index: 2; left: 76px; top: 68px; width: 610px; }
+    .a .kicker { color: #175cd3; margin-bottom: 28px; }
+    .a h1 { font-size: 74px; line-height: 1.16; color: #101828; }
+    .a h1 em { color: #f05a28; font-style: normal; }
+    .a .rule { width: 72px; height: 8px; background: #175cd3; margin: 36px 0 24px; }
+    .a .desc { font-size: 21px; line-height: 1.7; color: #475467; }
+    .a .seq { position: absolute; z-index: 3; left: 76px; bottom: 48px; display: flex; gap: 10px; }
+    .a .seq span { padding: 7px 13px; border: 1px solid #175cd355; background: #fff9; color: #175cd3; font: 700 14px Consolas, monospace; }
+
+    /* B — 编辑杂志风：适合公众号、掘金专栏 */
+    .b { background: #f4f0e8; display: grid; grid-template-columns: 58% 42%; }
+    .b .left { padding: 74px 54px 58px 76px; position: relative; }
+    .b .right { position: relative; overflow: hidden; background: #14213d; }
+    .b .right img { width: 170%; height: 100%; object-fit: cover; object-position: 77% center; mix-blend-mode: luminosity; filter: contrast(1.12); opacity: .95; }
+    .b .right::after { content: ""; position: absolute; inset: 0; background: #175cd344; mix-blend-mode: color; }
+    .b .index { position: absolute; right: 32px; top: 24px; color: #f05a28; font: 800 96px/.9 Consolas, monospace; opacity: .9; }
+    .b .kicker { color: #f05a28; margin-bottom: 75px; }
+    .b h1 { font-size: 70px; line-height: 1.22; }
+    .b .underline { display: inline-block; border-bottom: 10px solid #f05a28; line-height: .96; }
+    .b .meta { position: absolute; bottom: 52px; left: 76px; font: 700 15px/1.6 Consolas, monospace; color: #667085; letter-spacing: .08em; }
+    .b .rail { position: absolute; left: 24px; top: 30px; bottom: 30px; width: 4px; background: #f05a28; z-index: 3; }
+
+    /* C — 深色系统图：适合硬核网络、后端、架构主题 */
+    .c { background: #07111f; color: #f8fafc; }
+    .c::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(#38bdf818 1px, transparent 1px), linear-gradient(90deg, #38bdf818 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(90deg,#000,transparent 68%); }
+    .c .orb { position: absolute; width: 700px; height: 700px; right: -90px; top: -60px; border-radius: 50%; background: radial-gradient(circle at 40% 45%, #38bdf855, #2563eb22 46%, transparent 67%); }
+    .c .art { position: absolute; right: -170px; top: 90px; width: 860px; height: 570px; object-fit: cover; object-position: 68% center; opacity: .78; filter: saturate(1.5) contrast(1.15); mix-blend-mode: screen; }
+    .c .copy { position: absolute; left: 76px; top: 74px; width: 720px; z-index: 3; }
+    .c .kicker { color: #38bdf8; margin-bottom: 44px; }
+    .c h1 { font-size: 76px; line-height: 1.17; text-shadow: 0 8px 30px #000a; }
+    .c h1 strong { color: #fbbf24; }
+    .c .flow { position: absolute; left: 78px; bottom: 74px; z-index: 3; display: flex; align-items: center; gap: 13px; color: #94a3b8; font: 700 16px Consolas, monospace; }
+    .c .flow i { width: 36px; height: 1px; background: #38bdf8; box-shadow: 0 0 12px #38bdf8; }
+    .c .badge { position: absolute; right: 48px; bottom: 42px; z-index: 3; width: 108px; height: 108px; border: 1px solid #38bdf888; border-radius: 50%; display: grid; place-items: center; color: #38bdf8; font: 700 14px/1.2 Consolas, monospace; text-align: center; transform: rotate(8deg); }
+
+    body[data-shot] { background: transparent; overflow: hidden; }
+    body[data-shot] .gallery { padding: 0; width: 1296px; gap: 0; }
+    body[data-shot] .cover { display: none; box-shadow: none; }
+    body[data-shot="a"] .a, body[data-shot="b"] .b, body[data-shot="c"] .c { display: block; }
+    body[data-shot="b"] .b { display: grid; }
+  </style>
+</head>
+<body>
+  <main class="gallery">
+    <section class="cover a">
+      <div class="visual"></div>
+      <div class="copy">
+        <div class="kicker">WEB FUNDAMENTALS · 01</div>
+        <h1>从访问域名<br>到最终<em>展示</em><br>都经历了什么？</h1>
+        <div class="rule"></div>
+        <div class="desc">拆解一次网页访问背后的完整链路</div>
+      </div>
+      <div class="seq"><span>DNS</span><span>TCP</span><span>HTTP</span><span>RENDER</span></div>
+    </section>
+
+    <section class="cover b">
+      <div class="left">
+        <div class="kicker">THE WEB, EXPLAINED</div>
+        <h1>从访问域名<br>到最终<span class="underline">展示</span><br>都经历了什么？</h1>
+        <div class="meta">DNS / NETWORK / SERVER / BROWSER<br>一次请求的全链路拆解</div>
+      </div>
+      <div class="right"><div class="rail"></div><div class="index">01</div><img src="assets/domain-render-journey.png" alt="" /></div>
+    </section>
+
+    <section class="cover c">
+      <div class="orb"></div><img class="art" src="assets/domain-render-journey.png" alt="" />
+      <div class="copy">
+        <div class="kicker">UNDER THE HOOD / 浏览器工作原理</div>
+        <h1>从访问域名<br>到最终<strong>展示</strong><br>都经历了什么？</h1>
+      </div>
+      <div class="flow"><span>URL</span><i></i><span>DNS</span><i></i><span>HTTP</span><i></i><span>DOM/CSSOM</span><i></i><span>PIXELS</span></div>
+      <div class="badge">FULL<br>REQUEST<br>JOURNEY</div>
+    </section>
+  </main>
+  <script>
+    const shot = new URLSearchParams(location.search).get('shot');
+    if (shot) document.body.dataset.shot = shot;
+  </script>
+</body>
+</html>
