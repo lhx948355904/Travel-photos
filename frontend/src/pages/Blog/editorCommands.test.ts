@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { prefixSelectedLines, toggleInline, wrapSelection } from './editorCommands'
+import { continueList, indentSelection, prefixSelectedLines, toggleInline, wrapSelection } from './editorCommands'
 
 describe('Markdown editor commands', () => {
   it('toggles bold without nesting markers', () => {
@@ -32,5 +32,33 @@ describe('Markdown editor commands', () => {
   it('prefixes every selected line for list commands', () => {
     expect(prefixSelectedLines('one\ntwo', { start: 0, end: 7 }, (index) => `${index + 1}. `).value)
       .toBe('1. one\n2. two')
+  })
+
+  it('inserts four spaces with Tab and indents or outdents multiline selections', () => {
+    expect(indentSelection('const value = true', { start: 6, end: 6 })).toEqual({
+      value: 'const     value = true', start: 10, end: 10,
+    })
+
+    const indented = indentSelection('one\ntwo', { start: 0, end: 7 })
+    expect(indented.value).toBe('    one\n    two')
+    expect(indentSelection(indented.value, { start: 0, end: indented.value.length }, true).value)
+      .toBe('one\ntwo')
+  })
+
+  it('continues unordered, ordered and task lists on Enter', () => {
+    expect(continueList('- first', { start: 7, end: 7 })).toEqual({
+      value: '- first\n- ', start: 10, end: 10,
+    })
+    expect(continueList('9. ninth', { start: 8, end: 8 })).toEqual({
+      value: '9. ninth\n10. ', start: 13, end: 13,
+    })
+    expect(continueList('- [x] done', { start: 10, end: 10 })?.value)
+      .toBe('- [x] done\n- [ ] ')
+  })
+
+  it('exits a list when Enter is pressed on an empty item', () => {
+    expect(continueList('before\n- ', { start: 9, end: 9 })).toEqual({
+      value: 'before\n', start: 7, end: 7,
+    })
   })
 })

@@ -31,6 +31,8 @@ import BlogHeader from '../../components/BlogHeader'
 import BlogMarkdown from '../../components/BlogMarkdown'
 import type { BlogPostInput, BlogStatus } from '../../types/blog'
 import {
+  continueList,
+  indentSelection,
   insertBlock,
   prefixSelectedLines,
   toggleInline,
@@ -300,6 +302,21 @@ const BlogEditorPage = () => {
   ], [historyVersion, input.contentMarkdown])
 
   const handleEditorKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      runCommand((value, selection) => indentSelection(value, selection, event.shiftKey))
+      return
+    }
+
+    if (event.key === 'Enter') {
+      const change = continueList(input.contentMarkdown, currentSelection())
+      if (change) {
+        event.preventDefault()
+        applyEditorChange(change)
+      }
+      return
+    }
+
     if (!(event.ctrlKey || event.metaKey)) return
     const key = event.key.toLowerCase()
     if (key === 'z') {
@@ -343,21 +360,22 @@ const BlogEditorPage = () => {
         </div>
       </div>
 
-      <div className="blog-editor-titlebar">
-        <Input.TextArea
-          value={input.title}
-          onChange={(event) => setField('title', event.target.value)}
-          maxLength={160}
-          autoSize={{ minRows: 1, maxRows: 3 }}
-          placeholder="一篇值得被再次找到的文章"
-          aria-label="文章标题"
-        />
-      </div>
+      <section className="blog-editor-stage" aria-label="文章编辑工作区">
+        <div className="blog-editor-titlebar">
+          <Input.TextArea
+            value={input.title}
+            onChange={(event) => setField('title', event.target.value)}
+            maxLength={160}
+            autoSize={{ minRows: 1, maxRows: 3 }}
+            placeholder="一篇值得被再次找到的文章"
+            aria-label="文章标题"
+          />
+        </div>
 
-      <Tabs className="blog-editor-mobile-tabs" activeKey={mobileMode} onChange={(key) => setMobileMode(key as 'edit' | 'preview')}
-        items={[{ key: 'edit', label: <span><FileTextOutlined /> 编辑</span> }, { key: 'preview', label: <span><EyeOutlined /> 预览</span> }]} />
+        <Tabs className="blog-editor-mobile-tabs" activeKey={mobileMode} onChange={(key) => setMobileMode(key as 'edit' | 'preview')}
+          items={[{ key: 'edit', label: <span><FileTextOutlined /> 编辑</span> }, { key: 'preview', label: <span><EyeOutlined /> 预览</span> }]} />
 
-      <div className={`blog-editor-workspace show-${mobileMode}`}>
+        <div className={`blog-editor-workspace show-${mobileMode}`}>
         <section className="blog-editor-pane" aria-label="Markdown 编辑区">
           <div className="blog-editor-toolbar">
             {toolbar.map((item, index) => <Fragment key={item.label}>
@@ -417,7 +435,8 @@ const BlogEditorPage = () => {
           </label>
           {status === 'PUBLISHED' && <p className="blog-published-notice">当前修改只保存在浏览器恢复稿中，不会自动覆盖线上文章。</p>}
         </aside>
-      </div>
+        </div>
+      </section>
     </main>
   )
 }

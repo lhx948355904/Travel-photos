@@ -7,6 +7,8 @@ export interface EditorChange extends EditorSelection {
   value: string
 }
 
+const INDENT = '    '
+
 const selectedText = (value: string, selection: EditorSelection) =>
   value.slice(selection.start, selection.end)
 
@@ -109,5 +111,91 @@ export const insertBlock = (
     value: `${value.slice(0, selection.start)}${replacement}${value.slice(selection.end)}`,
     start,
     end: start + selectLength,
+  }
+}
+
+/** 像代码编辑器一样对光标或多行选区进行四空格缩进。 */
+export const indentSelection = (
+  value: string,
+  selection: EditorSelection,
+  outdent = false,
+): EditorChange => {
+  const lineStart = value.lastIndexOf('\n', Math.max(0, selection.start - 1)) + 1
+
+  if (selection.start === selection.end) {
+    if (!outdent) {
+      return {
+        value: `${value.slice(0, selection.start)}${INDENT}${value.slice(selection.end)}`,
+        start: selection.start + INDENT.length,
+        end: selection.start + INDENT.length,
+      }
+    }
+
+    const removable = value.slice(lineStart).match(/^(?: {1,4}|\t)/)?.[0] || ''
+    if (!removable) return { value, ...selection }
+    const nextCursor = Math.max(lineStart, selection.start - removable.length)
+    return {
+      value: `${value.slice(0, lineStart)}${value.slice(lineStart + removable.length)}`,
+      start: nextCursor,
+      end: nextCursor,
+    }
+  }
+
+  const effectiveEnd = selection.end > selection.start && value[selection.end - 1] === '\n'
+    ? selection.end - 1
+    : selection.end
+  const nextBreak = value.indexOf('\n', effectiveEnd)
+  const lineEnd = nextBreak === -1 ? value.length : nextBreak
+  const lines = value.slice(lineStart, lineEnd).split('\n')
+  const replacement = lines
+    .map((line) => outdent ? line.replace(/^(?: {1,4}|\t)/, '') : `${INDENT}${line}`)
+    .join('\n')
+
+  return {
+    value: `${value.slice(0, lineStart)}${replacement}${value.slice(lineEnd)}`,
+    start: lineStart,
+    end: lineStart + replacement.length,
+  }
+}
+
+/**
+ * 在 Markdown 列表项中回车时延续项目符号，并为有序列表递增序号。
+ * 空列表项再次回车会退出列表，行为与主流 Markdown 编辑器一致。
+ */
+export const continueList = (
+  value: string,
+  selection: EditorSelection,
+): EditorChange | null => {
+  if (selection.start !== selection.end) return null
+
+  const lineStart = value.lastIndexOf('\n', Math.max(0, selection.start - 1)) + 1
+  const nextBreak = value.indexOf('\n', selection.start)
+  const lineEnd = nextBreak === -1 ? value.length : nextBreak
+  const line = value.slice(lineStart, lineEnd)
+  const match = line.match(/^(\s*)(?:(\d+)([.)])|([-+*]))\s+(\[(?: |x|X)\]\s+)?(.*)$/)
+  if (!match) return null
+
+  const [matched, indent, orderedNumber, orderedDelimiter, bullet, task = '', content] = match
+  const prefixLength = matched.length - content.length
+  if (selection.start < lineStart + prefixLength) return null
+
+  if (!content.trim()) {
+    return {
+      value: `${value.slice(0, lineStart)}${content}${value.slice(lineEnd)}`,
+      start: lineStart,
+      end: lineStart,
+    }
+  }
+
+  const marker = orderedNumber
+    ? `${Number(orderedNumber) + 1}${orderedDelimiter}`
+    : bullet
+  const nextPrefix = `${indent}${marker} ${task ? '[ ] ' : ''}`
+  const insertion = `\n${nextPrefix}`
+  const cursor = selection.start + insertion.length
+  return {
+    value: `${value.slice(0, selection.start)}${insertion}${value.slice(selection.end)}`,
+    start: cursor,
+    end: cursor,
   }
 }

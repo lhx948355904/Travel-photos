@@ -21,6 +21,10 @@ const setTextareaValue = (textarea: HTMLTextAreaElement, value: string) => {
   textarea.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
+const flushSelectionRestore = () => new Promise<void>((resolve) => {
+  window.requestAnimationFrame(() => resolve())
+})
+
 describe('BlogEditorPage interactions', () => {
   let container: HTMLDivElement
   let root: Root
@@ -68,18 +72,61 @@ describe('BlogEditorPage interactions', () => {
       textarea.setSelectionRange(4, 11)
     })
 
-    await act(async () => boldButton.click())
+    await act(async () => {
+      boldButton.click()
+      await flushSelectionRestore()
+    })
     expect(textarea.value).toBe('协议： **是通过TCP** ')
     expect(container.querySelector('.blog-preview-pane strong')?.textContent).toBe('是通过TCP')
 
-    await act(async () => boldButton.click())
+    textarea.setSelectionRange(6, 12)
+    await act(async () => {
+      boldButton.click()
+      await flushSelectionRestore()
+    })
     expect(textarea.value).toBe('协议： 是通过TCP ')
 
-    await act(async () => boldButton.click())
-    await act(async () => textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })))
+    textarea.setSelectionRange(4, 10)
+    await act(async () => {
+      boldButton.click()
+      await flushSelectionRestore()
+    })
+    await act(async () => {
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }))
+      await flushSelectionRestore()
+    })
     expect(textarea.value).toBe('协议： 是通过TCP ')
 
-    await act(async () => textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, shiftKey: true, bubbles: true })))
+    await act(async () => {
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, shiftKey: true, bubbles: true }))
+      await flushSelectionRestore()
+    })
     expect(textarea.value).toBe('协议： **是通过TCP** ')
+  })
+
+  it('supports IDE-style indentation and continues Markdown lists on Enter', async () => {
+    const textarea = container.querySelector<HTMLTextAreaElement>('.blog-markdown-input')!
+
+    await act(async () => setTextareaValue(textarea, 'const value = true'))
+    await act(async () => {
+      textarea.focus()
+      textarea.setSelectionRange(6, 6)
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+    })
+    expect(textarea.value).toBe('const     value = true')
+
+    await act(async () => setTextareaValue(textarea, '1. first'))
+    await act(async () => {
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+    expect(textarea.value).toBe('1. first\n2. ')
+
+    await act(async () => setTextareaValue(textarea, '- '))
+    await act(async () => {
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+    expect(textarea.value).toBe('')
   })
 })
