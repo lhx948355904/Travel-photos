@@ -102,19 +102,31 @@ try {
   $bundleBase64 = [Convert]::ToBase64String(
     [System.IO.File]::ReadAllBytes($bundlePath),
     [System.Base64FormattingOptions]::InsertLineBreaks
-  )
+  ).Replace("`r`n", "`n")
+  if ($bundleBase64.Contains("`r")) {
+    throw "Base64 payload contains Windows CR characters and cannot be sent safely."
+  }
+
+  $bundleSha256 = (Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash.ToLowerInvariant()
   $quotedBranchRef = ConvertTo-BashSingleQuoted $branchRef
   $quotedBranch = ConvertTo-BashSingleQuoted $branch
+  $quotedBundleSha256 = ConvertTo-BashSingleQuoted $bundleSha256
   $remoteScript = @"
 set -euo pipefail
 project_path=$quotedProjectPath
 branch_ref=$quotedBranchRef
 expected_branch=$quotedBranch
+expected_bundle_sha256=$quotedBundleSha256
 bundle_path=`$(mktemp /tmp/travel-photo-map.XXXXXX.bundle)
 trap 'rm -f "`$bundle_path"' EXIT
-base64 --decode > "`$bundle_path" <<'TRAVEL_PHOTO_MAP_BUNDLE'
+tr -d '\r' <<'TRAVEL_PHOTO_MAP_BUNDLE' | base64 --decode > "`$bundle_path"
 $bundleBase64
 TRAVEL_PHOTO_MAP_BUNDLE
+actual_bundle_sha256=`$(sha256sum "`$bundle_path" | awk '{print `$1}')
+if [ "`$actual_bundle_sha256" != "`$expected_bundle_sha256" ]; then
+  echo '[deploy] uploaded bundle checksum mismatch; aborting deployment' >&2
+  exit 1
+fi
 cd "`$project_path"
 if [ -n "`$(git status --porcelain --untracked-files=all)" ]; then
   echo '[deploy] server working tree has local changes; commit or stash them first' >&2
