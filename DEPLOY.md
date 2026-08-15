@@ -202,6 +202,8 @@ git push
 .\scripts\deploy-remote.ps1
 ```
 
+默认会把当前分支打成自包含的 Git bundle，通过 SSH 直接传到服务器，再进行数据库备份和 Docker 重建。服务器不需要连接 GitHub，因此不会再因为服务器访问 GitHub 超时而卡住。`.env`、`backups/` 和数据库卷不会包含在 bundle 中，也不会被覆盖。
+
 默认连接：
 
 ```text
@@ -214,6 +216,12 @@ root@49.234.53.105:/opt/travel-photo-map
 .\scripts\deploy-remote.ps1 -User ubuntu -ProjectPath "/home/ubuntu/travel-photo-map"
 ```
 
+如果服务器访问 GitHub 稳定，也可以显式使用原来的 `git pull --ff-only` 方式：
+
+```powershell
+.\scripts\deploy-remote.ps1 -CodeSource Git
+```
+
 ## 9. 本机一键发布
 
 日常最省事的命令：
@@ -222,10 +230,12 @@ root@49.234.53.105:/opt/travel-photo-map
 .\scripts\release.ps1 "更新说明"
 ```
 
-它会先在本机提交并推送，再 SSH 到服务器执行：
+它会先在本机提交并推送，再把同一个提交通过 SSH bundle 传到服务器并执行部署。即使没有新文件需要提交，脚本也仍会执行 `git push`，避免遗漏本机已有但尚未推送的提交。
 
-```bash
-cd /opt/travel-photo-map && bash scripts/deploy-server.sh
+如果确定要让服务器自己从 GitHub 拉取，可执行：
+
+```powershell
+.\scripts\release.ps1 "更新说明" -CodeSource Git
 ```
 
 如果你不是用 root 登录：

@@ -5,6 +5,8 @@ param(
   [string]$User = "root",
   [string]$ProjectPath = "/opt/travel-photo-map",
   [string]$Distro = "Ubuntu",
+  [ValidateSet("Bundle", "Git")]
+  [string]$CodeSource = "Bundle",
   [switch]$WindowsServer
 )
 
@@ -15,5 +17,5 @@ $ErrorActionPreference = "Stop"
 if ($WindowsServer) {
   & "$PSScriptRoot\deploy-remote.ps1" -HostName $HostName -User $User -ProjectPath $ProjectPath -Distro $Distro -WindowsServer
 } else {
-  & "$PSScriptRoot\deploy-remote.ps1" -HostName $HostName -User $User -ProjectPath $ProjectPath
+  & "$PSScriptRoot\deploy-remote.ps1" -HostName $HostName -User $User -ProjectPath $ProjectPath -CodeSource $CodeSource
 }

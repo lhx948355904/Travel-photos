@@ -32,7 +32,6 @@ read_env_value() {
 
 DB_USER_VALUE="$(read_env_value DB_USER photomap)"
 
-echo "[deploy] pulling latest code"
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "[deploy] server working tree has local changes; commit or stash them first"
   git status --short
@@ -59,7 +58,12 @@ pull_latest_code() {
   return 1
 }
 
-pull_latest_code
+if [ "${DEPLOY_SKIP_GIT_UPDATE:-0}" = "1" ]; then
+  echo "[deploy] code bundle already applied; skipping git pull"
+else
+  echo "[deploy] pulling latest code"
+  pull_latest_code
+fi
 
 mkdir -p backups
 if docker compose ps --status running db 2>/dev/null | grep -q photomap-db; then

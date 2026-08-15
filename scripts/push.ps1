@@ -29,8 +29,10 @@ Invoke-Git add -A
 git diff --cached --quiet
 if ($LASTEXITCODE -eq 0) {
   Write-Host "No changes to commit."
-  return
+} elseif ($LASTEXITCODE -eq 1) {
+  Invoke-Git commit -m $Message
+} else {
+  throw "git diff --cached --quiet failed"
 }
 
-Invoke-Git commit -m $Message
 Invoke-Git push
