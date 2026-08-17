@@ -48,6 +48,7 @@ const emptyInput: BlogPostInput = {
 }
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 type HistoryEntry = EditorSelection & { value: string }
+type EditorViewport = { top: number; left: number }
 
 const BlogEditorPage = () => {
   const { id: routeId } = useParams()
@@ -201,12 +202,21 @@ const BlogEditorPage = () => {
     }
   }
 
-  const focusSelection = (selection: EditorSelection) => {
+  const currentEditorViewport = (): EditorViewport | null => {
+    const textarea = textareaRef.current
+    return textarea ? { top: textarea.scrollTop, left: textarea.scrollLeft } : null
+  }
+
+  const focusSelection = (selection: EditorSelection, viewport = currentEditorViewport()) => {
     window.requestAnimationFrame(() => {
       const textarea = textareaRef.current
       if (!textarea) return
-      textarea.focus()
+      textarea.focus({ preventScroll: true })
       textarea.setSelectionRange(selection.start, selection.end)
+      if (viewport) {
+        textarea.scrollTop = viewport.top
+        textarea.scrollLeft = viewport.left
+      }
       lastSelectionRef.current = selection
     })
   }
@@ -227,9 +237,10 @@ const BlogEditorPage = () => {
 
   const applyEditorChange = (change: EditorChange) => {
     const selection = currentSelection()
+    const viewport = currentEditorViewport()
     recordHistory({ value: input.contentMarkdown, ...selection })
     setField('contentMarkdown', change.value)
-    focusSelection(change)
+    focusSelection(change, viewport)
   }
 
   const runCommand = (
@@ -243,18 +254,20 @@ const BlogEditorPage = () => {
   const undo = () => {
     const previous = undoStackRef.current.pop()
     if (!previous) return
+    const viewport = currentEditorViewport()
     redoStackRef.current.push({ value: input.contentMarkdown, ...currentSelection() })
     setField('contentMarkdown', previous.value)
-    focusSelection(previous)
+    focusSelection(previous, viewport)
     setHistoryVersion((version) => version + 1)
   }
 
   const redo = () => {
     const next = redoStackRef.current.pop()
     if (!next) return
+    const viewport = currentEditorViewport()
     undoStackRef.current.push({ value: input.contentMarkdown, ...currentSelection() })
     setField('contentMarkdown', next.value)
-    focusSelection(next)
+    focusSelection(next, viewport)
     setHistoryVersion((version) => version + 1)
   }
 
@@ -384,7 +397,14 @@ const BlogEditorPage = () => {
                 title={<span>{item.label}{item.shortcut && <kbd>{item.shortcut}</kbd>}</span>}
                 classNames={{ root: 'blog-editor-tooltip' }}
               >
-                <Button type="text" icon={item.icon} onClick={item.action} disabled={item.disabled} aria-label={item.label} />
+                <Button
+                  type="text"
+                  icon={item.icon}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={item.action}
+                  disabled={item.disabled}
+                  aria-label={item.label}
+                />
               </Tooltip>
             </Fragment>)}
           </div>

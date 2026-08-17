@@ -129,4 +129,34 @@ describe('BlogEditorPage interactions', () => {
     })
     expect(textarea.value).toBe('')
   })
+
+  it('keeps the editor viewport when inserting a code block from the toolbar', async () => {
+    const textarea = container.querySelector<HTMLTextAreaElement>('.blog-markdown-input')!
+    const codeBlockButton = container.querySelector<HTMLButtonElement>('button[aria-label="代码块"]')!
+    const content = Array.from({ length: 80 }, (_, index) => `line ${index}`).join('\n')
+    const cursor = content.indexOf('line 50')
+
+    await act(async () => setTextareaValue(textarea, content))
+    textarea.focus()
+    textarea.setSelectionRange(cursor, cursor)
+    textarea.scrollTop = 480
+    textarea.scrollLeft = 24
+
+    const setSelectionRange = textarea.setSelectionRange.bind(textarea)
+    vi.spyOn(textarea, 'setSelectionRange').mockImplementation((start, end, direction) => {
+      setSelectionRange(start, end, direction)
+      // 模拟浏览器在受控 textarea 更新并恢复选区时重置内部滚动位置。
+      textarea.scrollTop = 0
+      textarea.scrollLeft = 0
+    })
+
+    await act(async () => {
+      codeBlockButton.click()
+      await flushSelectionRestore()
+    })
+
+    expect(textarea.value).toContain('```ts\nconst value = true\n```\nline 50')
+    expect(textarea.scrollTop).toBe(480)
+    expect(textarea.scrollLeft).toBe(24)
+  })
 })
