@@ -5,10 +5,13 @@ import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeSlug from 'rehype-slug'
 import remarkGfm from 'remark-gfm'
+import ImageSizeEditor from './ImageSizeEditor'
+import { imageMarkdown, parseImageTitle } from './imageSize'
 
 interface BlogMarkdownProps {
   content: string
   className?: string
+  onImageResize?: (start: number, end: number, markdown: string) => void
 }
 
 const safeUrlTransform = (url: string) => {
@@ -62,7 +65,7 @@ const CodePre = ({ children }: { children?: ReactNode }) => {
   )
 }
 
-const BlogMarkdown = ({ content, className = '' }: BlogMarkdownProps) => (
+const BlogMarkdown = ({ content, className = '', onImageResize }: BlogMarkdownProps) => (
   <div className={`blog-markdown ${className}`.trim()}>
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -84,9 +87,20 @@ const BlogMarkdown = ({ content, className = '' }: BlogMarkdownProps) => (
             </a>
           )
         },
-        img: ({ src = '', alt = '' }) => (
-          <img src={src} alt={alt} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
-        ),
+        img: ({ src = '', alt = '', title = '', node }) => {
+          const size = parseImageTitle(title)
+          const picture = <img src={src} alt={alt} title={size.title || undefined}
+            width={size.width} height={size.height}
+            style={{ width: size.width ? `${size.width}px` : 'auto', height: size.height ? `${size.height}px` : 'auto', objectFit: 'contain' }}
+            loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+          const start = node?.position?.start.offset
+          const end = node?.position?.end.offset
+          if (!onImageResize || start === undefined || end === undefined) return picture
+          return <ImageSizeEditor alt={alt} width={size.width} height={size.height}
+            onApply={(width, height) => onImageResize(start, end, imageMarkdown(src, alt, size.title, width, height))}>
+            {picture}
+          </ImageSizeEditor>
+        },
       }}
     >
       {content}

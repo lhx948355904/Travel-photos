@@ -428,8 +428,10 @@ const BlogEditorPage = () => {
         </section>
 
         <section className="blog-preview-pane" aria-label="实时预览">
-          <div className="blog-preview-label"><EyeOutlined /> 实时预览</div>
-          {input.contentMarkdown ? <BlogMarkdown content={input.contentMarkdown} /> : <div className="blog-preview-empty">正文预览会显示在这里</div>}
+          <div className="blog-preview-label"><EyeOutlined /> 实时预览 <small>点击图片设置宽高</small></div>
+          {input.contentMarkdown ? <BlogMarkdown content={input.contentMarkdown} onImageResize={(start, end, markdown) => {
+            applyEditorChange({ value: input.contentMarkdown.slice(0, start) + markdown + input.contentMarkdown.slice(end), start, end: start + markdown.length })
+          }} /> : <div className="blog-preview-empty">正文预览会显示在这里</div>}
         </section>
 
         <aside className="blog-editor-meta" aria-label="文章设置">

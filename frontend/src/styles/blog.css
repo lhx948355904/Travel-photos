@@ -152,6 +152,17 @@ main[class^="blog-"] + .icp-footer-link {
 .blog-external-link-icon { margin-left: 4px; font-size: 10px; }
 .blog-markdown blockquote { margin: 2em 0; padding: 4px 0 4px 24px; border-left: 3px solid #91cf64; color: #51554a; font-family: "Instrument Serif", Georgia, serif; font-size: 22px; }
 .blog-markdown img { max-width: 100%; height: auto; margin: 28px auto; display: block; background: #e4e0d5; }
+.blog-editable-image { display: block; cursor: pointer; }
+.blog-editable-image:hover, .blog-editable-image:focus-visible { outline: 2px solid #568536; outline-offset: 4px; }
+.blog-image-size-form { width: min(280px, calc(100vw - 56px)); }
+.blog-image-size-fields { display: flex; gap: 12px; }
+.blog-image-size-fields label { flex: 1; min-width: 0; font-size: 13px; }
+.blog-image-size-fields input { box-sizing: border-box; width: 100%; margin-top: 6px; padding: 7px 10px; border: 1px solid #9ca197; border-radius: 6px; font: inherit; }
+.blog-image-size-fields input:focus-visible { outline: 2px solid #568536; outline-offset: 1px; }
+.blog-image-size-fields input::placeholder { color: #747970; }
+.blog-image-size-form p { margin: 12px 0; color: #54594f; font-size: 12px; line-height: 1.6; }
+.blog-image-size-actions { display: flex; justify-content: space-between; gap: 12px; }
+.blog-preview-label small { margin-left: auto; font-size: 12px; font-weight: 400; }
 .blog-markdown table { width: 100%; margin: 28px 0; border-collapse: collapse; font-size: 14px; }
 .blog-markdown th, .blog-markdown td { padding: 12px 14px; border: 1px solid var(--blog-line); text-align: left; }
 .blog-markdown th { background: #e8e3d7; }
