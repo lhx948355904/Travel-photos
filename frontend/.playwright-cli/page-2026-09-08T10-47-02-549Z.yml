@@ -1,0 +1,116 @@
+- generic [ref=f3e2]:
+  - main [ref=f3e5]:
+    - generic [ref=f3e6]:
+      - link "知识博客首页" [ref=f3e7] [cursor=pointer]:
+        - /url: /blog
+        - generic [ref=f3e8]: 旅
+        - generic [ref=f3e9]:
+          - strong [ref=f3e10]: Knowledge Journal
+          - generic [ref=f3e11]: 旅途拾光 · 技术知识博客
+      - navigation "知识博客导航" [ref=f3e12]:
+        - link [ref=f3e13] [cursor=pointer]:
+          - /url: /
+          - img "arrow-left" [ref=f3e14]
+          - text: 返回首页
+        - link "文章" [ref=f3e17] [cursor=pointer]:
+          - /url: /blog
+        - link "管理" [ref=f3e18] [cursor=pointer]:
+          - /url: /blog/manage
+        - button "edit 写文章" [ref=f3e19] [cursor=pointer]:
+          - img "edit" [ref=f3e21]
+          - generic [ref=f3e24]: 写文章
+    - generic [ref=f3e25]:
+      - generic [ref=f3e26]:
+        - strong [ref=f3e28]: 草稿
+        - generic [ref=f3e29]: 有未保存修改
+      - generic [ref=f3e30]:
+        - button "创建草稿" [ref=f3e31] [cursor=pointer]:
+          - img "save" [ref=f3e33]
+        - button "发布文章" [ref=f3e37] [cursor=pointer]:
+          - img "send" [ref=f3e39]
+    - region "文章编辑工作区" [ref=f3e43]:
+      - textbox "文章标题" [ref=f3e45]:
+        - /placeholder: 一篇值得被再次找到的文章
+      - generic [ref=f3e46]:
+        - region "Markdown 编辑区" [ref=f3e47]:
+          - generic [ref=f3e48]:
+            - button "撤销" [ref=f3e49] [cursor=pointer]:
+              - img "undo" [ref=f3e160]
+            - button "重做" [disabled] [ref=f3e50]:
+              - generic:
+                - img "redo"
+            - separator [ref=f3e51]
+            - button "二级标题" [ref=f3e52] [cursor=pointer]:
+              - img "file-text" [ref=f3e54]
+            - button "加粗" [ref=f3e57] [cursor=pointer]:
+              - img "bold" [ref=f3e59]
+            - button "斜体" [ref=f3e62] [cursor=pointer]:
+              - img "italic" [ref=f3e64]
+            - button "删除线" [ref=f3e67] [cursor=pointer]:
+              - img "strikethrough" [ref=f3e69]
+            - separator [ref=f3e72]
+            - button "链接" [ref=f3e73] [cursor=pointer]:
+              - img "link" [ref=f3e75]
+            - button "引用" [ref=f3e78] [cursor=pointer]:
+              - generic [ref=f3e79]: ❝
+            - button "无序列表" [ref=f3e80] [cursor=pointer]:
+              - img "unordered-list" [ref=f3e82]
+            - button "有序列表" [ref=f3e85] [cursor=pointer]:
+              - img "ordered-list" [ref=f3e87]
+            - button "任务列表" [ref=f3e90] [cursor=pointer]:
+              - img "check-square" [ref=f3e92]
+            - separator [ref=f3e96]
+            - button "行内代码" [ref=f3e97] [cursor=pointer]:
+              - img "code" [ref=f3e99]
+            - button "代码块" [ref=f3e102] [cursor=pointer]:
+              - generic [ref=f3e103]: "{ }"
+            - button "分隔线" [ref=f3e104] [cursor=pointer]:
+              - img "minus" [ref=f3e106]
+            - separator [ref=f3e109]
+            - button "图片" [ref=f3e110] [cursor=pointer]:
+              - img "picture" [ref=f3e112]
+          - 'textbox "从一个清晰的问题开始。 ## 它是什么 写下你的理解、代码和验证过程。" [active] [ref=f3e115]':
+            - /placeholder: "从一个清晰的问题开始。\n\n## 它是什么\n\n写下你的理解、代码和验证过程。"
+            - text: "## 长图尺寸测试 ![长图](</image-size-fixture.svg> \"{size=autox400}\")"
+          - generic [ref=f3e116]:
+            - generic [ref=f3e117]: 57 字 · 3 行
+            - generic [ref=f3e118]: Markdown · Ctrl+S 保存
+        - region "实时预览" [ref=f3e119]:
+          - generic [ref=f3e120]:
+            - img "eye" [ref=f3e121]
+            - text: 实时预览
+            - generic [ref=f3e124]: 点击图片设置宽高
+          - generic [ref=f3e163]:
+            - heading "长图尺寸测试" [level=2] [ref=f3e164]
+            - paragraph [ref=f3e165]:
+              - button "设置图片尺寸：长图" [ref=f3e185] [cursor=pointer]:
+                - img "长图" [ref=f3e186]
+        - complementary "文章设置" [ref=f3e126]:
+          - text: PUBLISHING
+          - heading "文章设置" [level=2] [ref=f3e127]
+          - generic [ref=f3e128]: 主分类
+          - generic [ref=f3e131]:
+            - combobox [ref=f3e135]
+            - generic: 选择或输入分类
+          - generic [ref=f3e136]:
+            - text: 标签
+            - generic [ref=f3e137]: 0/8
+          - generic [ref=f3e140]:
+            - combobox [ref=f3e144]
+            - generic: 输入后回车创建标签
+          - generic [ref=f3e145]:
+            - text: 摘要
+            - generic [ref=f3e146]: 0/320
+          - textbox "为空时将从正文自动生成" [ref=f3e147]
+          - generic [ref=f3e148]: 固定链接
+          - generic [ref=f3e149]:
+            - textbox "固定链接前缀" [disabled] [ref=f3e150]: /blog/
+            - textbox "首次发布时自动生成" [ref=f3e151]
+          - generic [ref=f3e152]: 封面
+          - generic [ref=f3e153] [cursor=pointer]:
+            - img "picture" [ref=f3e154]
+            - generic [ref=f3e157]: 上传可选封面
+            - generic [ref=f3e158]: JPG / PNG / WebP，最大 10MB
+  - link "打开工信部备案管理系统：沪ICP备2026036429号" [ref=f3e4] [cursor=pointer]:
+    - /url: https://beian.miit.gov.cn/
+    - text: 沪ICP备2026036429号

@@ -104,6 +104,39 @@ describe('BlogEditorPage interactions', () => {
     expect(textarea.value).toBe('协议： **是通过TCP** ')
   })
 
+  it('resizes only the selected image, persists Markdown and supports undo and reset', async () => {
+    const textarea = container.querySelector<HTMLTextAreaElement>('.blog-markdown-input')!
+    const original = '![第一张](/same.png)\n\n![第二张](/same.png "说明")'
+    await act(async () => setTextareaValue(textarea, original))
+    await act(async () => container.querySelector<HTMLElement>('[aria-label="设置图片尺寸：第二张"]')!.click())
+    const height = document.querySelector<HTMLInputElement>('[aria-label="图片高度"]')!
+    expect(height).not.toBeNull()
+    await act(async () => {
+      height.value = '400'
+      height.closest('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      await flushSelectionRestore()
+    })
+    expect(textarea.value).toBe('![第一张](/same.png)\n\n![第二张](</same.png> "说明 {size=autox400}")')
+    expect(container.querySelector<HTMLImageElement>('img[alt="第二张"]')!.style.height).toBe('400px')
+    expect([...Array(window.localStorage.length)].some((_, i) => window.localStorage.getItem(window.localStorage.key(i)!)?.includes('{size=autox400}'))).toBe(true)
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('button[aria-label="撤销"]')!.click()
+      await flushSelectionRestore()
+    })
+    expect(textarea.value).toBe(original)
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('button[aria-label="重做"]')!.click()
+      await flushSelectionRestore()
+    })
+    await act(async () => container.querySelector<HTMLElement>('[aria-label="设置图片尺寸：第二张"]')!.click())
+    await act(async () => {
+      Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.textContent === '恢复自动')!.click()
+      await flushSelectionRestore()
+    })
+    expect(textarea.value).not.toContain('{size=')
+    expect(textarea.value).toContain('"说明"')
+  })
+
   it('supports IDE-style indentation and continues Markdown lists on Enter', async () => {
     const textarea = container.querySelector<HTMLTextAreaElement>('.blog-markdown-input')!
 
