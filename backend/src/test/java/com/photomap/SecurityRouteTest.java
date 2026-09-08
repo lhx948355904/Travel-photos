@@ -72,4 +72,11 @@ class SecurityRouteTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
     }
+
+    @Test
+    void protectsCosUploadCredentialRoute() throws Exception {
+        mockMvc.perform(get("/api/cos/credential"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
+    }
 }

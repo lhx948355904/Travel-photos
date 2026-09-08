@@ -59,7 +59,7 @@
 ### 2.3 照片上传与地点管理（FR-03，仅管理员）
 
 - **FR-03-1** 上传面板（Ant Design `Modal` + `Upload`）支持：
-  - 选择/拖拽多张图片（单次最多 20 张，单张 ≤ 20MB，格式 jpg/jpeg/png/webp/heic）。
+  - 选择/拖拽多张图片（格式 jpg/jpeg/png/webp/heic，不限制单张文件大小）。
   - 自动从图片 EXIF 读取 GPS 经纬度与拍摄时间（若存在），自动回填坐标；无 EXIF 时使用当前地图选点坐标。
   - 填写地点名称（可由搜索结果自动带出）、地点描述、旅行日期。
   - 从已上传图片中**指定一张为地图封面**。
@@ -559,8 +559,9 @@ marker.on('click', () => openGallery(location.id));
 - Ant Design `Upload` 组件 `customRequest` 拦截：
   1. 读取 EXIF（`exifr` 库）获取 GPS 与拍摄时间；
   2. 调 `GET /api/cos/credential` 拿临时凭证；
-  3. 用 `cos-js-sdk-v5` 直传 COS（大图走分片上传，带进度条）；
-  4. 收集所有图片返回信息，提交 `POST /api/locations`。
+  3. 用 `cos-js-sdk-v5` 直传 COS（超过 8MB 自动分片、逐片 MD5 校验、失败重试和断点续传）；
+  4. 调 `POST /api/cos/complete`，由后端校验对象归属、大小和真实图片文件头；
+  5. 收集所有图片返回信息，提交 `POST /api/locations`。
 - 上传成功后调用回调刷新地图 Marker。
 
 **FullscreenGallery（全屏轮播）**
@@ -713,6 +714,7 @@ volumes:
 
 - **鉴权**：所有写操作接口（POST/PUT/DELETE）必须校验 JWT 且为 admin 角色。
 - **COS 直传安全**：用临时凭证（STS），限制 `allowPrefix` 与 30 分钟有效期；前端不接触永久密钥。
+- **COS 跨域配置**：存储桶需允许站点域名发起 `GET/HEAD/PUT/POST/DELETE`，并暴露 `ETag`、`x-cos-request-id` 等响应头，否则浏览器直传会被 CORS 拦截。
 - **图片防盗链**：CDN 配置 Referer 白名单；如需更强保护改用 URL 签名鉴权。
 - **上传校验**：前端 + 后端双重校验文件类型、大小；后端校验经纬度范围（lng∈[-180,180], lat∈[-90,90]）。
 - **HEIC 兼容**：iPhone HEIC 在前端用 `heic2any` 转 webp/jpg 后再上传，避免浏览器不识别。

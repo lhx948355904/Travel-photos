@@ -246,12 +246,6 @@ const UploadPanel = ({
       return Upload.LIST_IGNORE;
     }
 
-    const isLt20M = file.size / 1024 / 1024 < 20;
-    if (!isLt20M) {
-      message.error("图片大小不能超过 20MB");
-      return Upload.LIST_IGNORE;
-    }
-
     void prepareAndAddUploadFile(file).catch((err: any) => {
       message.error(err.message || "HEIC 照片转换失败，请换一张 JPG/PNG 照片");
     });
@@ -521,6 +515,9 @@ const UploadPanel = ({
         </Form.Item>
 
         <Form.Item label="上传照片">
+          <p className="upload-help-text">
+            大文件会自动分片直传，网络恢复后点击“开始上传”可从已完成分片继续。
+          </p>
           <div className="upload-preview-list">
             {uploadItems.map((item, index) => (
               <div

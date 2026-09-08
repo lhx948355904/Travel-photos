@@ -1,45 +1,16 @@
-import React, { useState, useTransition, useEffect, useRef } from "react";
+import React from "react";
+import SubmitMsg from "./components/SubmitMsg";
 
-const TestPage = () => {
-  const [username, setUsername] = useState("");
-  const [isPending, setIsPending] = useTransition();
-  const [keyword, setKeyword] = useState("");
-  const workerRef = useRef<Worker | null>(null);
-
-  useEffect(() => {
-    // 创建 Worker
-    const worker = new Worker(new URL("./test.js", import.meta.url));
-    workerRef.current = worker;
-
-    worker.onmessage = (event) => {
-      setKeyword(event.data);
-    };
-
-    // 清理函数：组件卸载时终止 Worker
-    return () => {
-      worker.terminate();
-      workerRef.current = null;
-    };
-  }, []);
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setUsername(value);
-    setIsPending(() => {
-      setKeyword(value);
-    });
-    // 发送消息到 Worker
-    workerRef.current?.postMessage(value);
-  };
+const index = () => {
+  // 15-20分钟
+  // 封装组件
+  // 验证码输入框倒计时组件，点击发送验证码
 
   return (
     <div>
-      <input onChange={handleChange} />
-      {username}
-      {isPending ? <span>正在更新列表</span> : keyword}
-      <button>提交</button>
+      <SubmitMsg />
     </div>
   );
 };
 
-export default TestPage;
+export default index;

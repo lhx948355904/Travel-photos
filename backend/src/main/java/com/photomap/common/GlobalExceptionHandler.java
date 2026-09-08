@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
     public ApiResponse<Void> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
         log.warn("Upload file is too large: {}", e.getMessage());
-        return ApiResponse.error(413, "图片大小不能超过 20MB");
+        return ApiResponse.error(413, "上传文件超过了当前服务可处理的大小，请使用分片上传后重试");
     }
 
     @ExceptionHandler({

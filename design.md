@@ -134,12 +134,13 @@
 - COS 上传工具：`frontend/src/utils/cosUpload.ts`
 - 图片工具：`frontend/src/utils/image.ts`
 - 功能：
-  - 支持多图选择，限制图片类型和小于 20MB
-  - 支持 `.heic` 后缀进入上传列表，但当前未看到实际 HEIC 转码流程
+  - 支持多图选择并校验图片类型，不限制单张照片大小
+  - HEIC/HEIF 在浏览器中转换为 JPEG 后上传
   - 通过 exifr 读取照片 GPS 与拍摄时间
   - EXIF GPS 为 WGS-84，上传前转换为高德地图使用的 GCJ-02
   - 管理员调用后端 `/api/cos/credential` 获取 COS 临时凭证
-  - 使用 `cos-js-sdk-v5` 直传文件到 COS
+  - 使用 `cos-js-sdk-v5` 直传文件到 COS；超过 8MB 自动分片，并支持 MD5 校验、失败重试与断点续传
+  - 上传完成后调用 `/api/cos/complete`，由后端校验对象归属、文件大小和图片文件头
   - 上传成功后生成原图 URL、缩略图 URL、宽高、方向、大小、拍摄日期等元数据
   - 新建地点时调用 `POST /api/locations`
   - 编辑地点时可调用 `POST /api/locations/{id}/photos` 追加照片，并调用 `PUT /api/locations/{id}` 更新地点基础信息

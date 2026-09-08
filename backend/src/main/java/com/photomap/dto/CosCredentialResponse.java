@@ -12,4 +12,5 @@ public class CosCredentialResponse {
     private Long startTime;
     private Long expiredTime;
     private String allowPrefix;
+    private boolean publicReadAclEnabled;
 }

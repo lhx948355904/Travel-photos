@@ -3,6 +3,7 @@ package com.photomap.service;
 import com.photomap.common.BusinessException;
 import com.photomap.config.CosProperties;
 import com.photomap.dto.CosCredentialResponse;
+import com.photomap.dto.CosUploadCompleteRequest;
 import com.photomap.dto.CosUploadResponse;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
@@ -11,6 +12,8 @@ import com.qcloud.cos.auth.COSCredentials;
 import com.qcloud.cos.exception.CosServiceException;
 import com.qcloud.cos.http.HttpMethodName;
 import com.qcloud.cos.model.CannedAccessControlList;
+import com.qcloud.cos.model.COSObject;
+import com.qcloud.cos.model.GetObjectRequest;
 import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.model.PutObjectRequest;
 import com.qcloud.cos.region.Region;
@@ -25,7 +28,6 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -50,7 +52,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CosStsService {
 
-    private static final long MAX_FILE_SIZE = 20L * 1024L * 1024L;
     private static final long MAX_BLOG_FILE_SIZE = 10L * 1024L * 1024L;
     private static final long MAX_PIXELS = 40_000_000L;
     private static final Set<String> DECODE_REQUIRED_FORMATS = Set.of("jpg", "jpeg", "png", "gif", "bmp");
@@ -74,11 +75,13 @@ public class CosStsService {
             config.put("allowActions", new String[]{
                     "name/cos:PutObject",
                     "name/cos:PostObject",
+                    "name/cos:HeadObject",
                     "name/cos:InitiateMultipartUpload",
                     "name/cos:ListMultipartUploads",
                     "name/cos:ListParts",
                     "name/cos:UploadPart",
-                    "name/cos:CompleteMultipartUpload"
+                    "name/cos:CompleteMultipartUpload",
+                    "name/cos:AbortMultipartUpload"
             });
 
             Response resp = CosStsClient.getCredential(config);
@@ -92,6 +95,7 @@ public class CosStsService {
             dto.setStartTime(resp.startTime);
             dto.setExpiredTime(resp.expiredTime);
             dto.setAllowPrefix(prefix);
+            dto.setPublicReadAclEnabled(cosProperties.isPublicReadAclEnabled());
 
             return dto;
         } catch (Exception e) {
@@ -117,6 +121,53 @@ public class CosStsService {
             throw new BusinessException("博客图片仅支持 JPG、PNG 和 WebP");
         }
         return uploadValidatedFile(userId, file, format, "blog");
+    }
+
+    public CosUploadResponse completeDirectUpload(Long userId, CosUploadCompleteRequest request) {
+        validateCosConfig();
+        validateOwnedPhotoKey(userId, request.getCosKey());
+
+        COSClient cosClient = createClient();
+        try {
+            ObjectMetadata metadata = cosClient.getObjectMetadata(
+                    cosProperties.getBucket(),
+                    request.getCosKey()
+            );
+            if (metadata.getContentLength() != request.getFileSize()) {
+                throw new BusinessException("上传文件大小校验失败，请重新上传");
+            }
+            if (!StringUtils.hasText(metadata.getUserMetaDataOf("md5"))) {
+                throw new BusinessException("上传文件缺少完整性校验信息，请重新上传");
+            }
+
+            String format = detectRemoteImageFormat(cosClient, request.getCosKey());
+            if (!StringUtils.hasText(format)) {
+                throw new BusinessException("上传对象不是合法图片");
+            }
+
+            CosUploadResponse response = new CosUploadResponse();
+            response.setCosKey(request.getCosKey());
+            response.setUrl(buildPublicUrl(request.getCosKey()));
+            response.setStatus("approved");
+            response.setReviewReason("multipart upload completed and object size/type verified");
+            return response;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (CosServiceException e) {
+            if (isObjectMissing(e)) {
+                throw new BusinessException("上传对象不存在或尚未合并完成");
+            }
+            log.error("Failed to verify direct COS upload, key={}", request.getCosKey(), e);
+            throw new BusinessException("校验 COS 上传结果失败");
+        } catch (IOException e) {
+            log.error("Failed to read direct COS upload header, key={}", request.getCosKey(), e);
+            throw new BusinessException("读取 COS 上传结果失败");
+        } catch (Exception e) {
+            log.error("Failed to verify direct COS upload, key={}", request.getCosKey(), e);
+            throw new BusinessException("校验 COS 上传结果失败");
+        } finally {
+            cosClient.shutdown();
+        }
     }
 
     private CosUploadResponse uploadValidatedFile(Long userId, MultipartFile file, String format, String namespace) {
@@ -337,19 +388,17 @@ public class CosStsService {
             throw new BusinessException("请选择要上传的图片");
         }
 
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new BusinessException("图片大小不能超过 20MB");
-        }
-
         try {
-            byte[] bytes = file.getBytes();
-            String format = detectImageFormat(bytes);
+            String format;
+            try (InputStream inputStream = file.getInputStream()) {
+                format = detectImageFormat(inputStream.readNBytes(32));
+            }
             if (!StringUtils.hasText(format)) {
                 throw new BusinessException("文件不是合法图片");
             }
 
             if (DECODE_REQUIRED_FORMATS.contains(format)) {
-                validateImageDimensions(bytes, format);
+                validateImageDimensions(file, format);
             }
 
             return format;
@@ -363,7 +412,7 @@ public class CosStsService {
         }
     }
 
-    private void validateImageDimensions(byte[] bytes, String format) throws IOException {
+    private void validateImageDimensions(MultipartFile file, String format) throws IOException {
         String readerFormat = "jpg".equals(format) ? "jpeg" : format;
         Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName(readerFormat);
         if (!readers.hasNext()) {
@@ -371,7 +420,8 @@ public class CosStsService {
         }
 
         ImageReader reader = readers.next();
-        try (ImageInputStream imageInputStream = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+        try (InputStream inputStream = file.getInputStream();
+             ImageInputStream imageInputStream = ImageIO.createImageInputStream(inputStream)) {
             if (imageInputStream == null) {
                 throw new BusinessException("图片无法解析");
             }
@@ -431,6 +481,22 @@ public class CosStsService {
             return "heic";
         }
         return null;
+    }
+
+    private String detectRemoteImageFormat(COSClient cosClient, String key) throws IOException {
+        GetObjectRequest request = new GetObjectRequest(cosProperties.getBucket(), key);
+        request.setRange(0, 31);
+        try (COSObject object = cosClient.getObject(request);
+             InputStream inputStream = object.getObjectContent()) {
+            return detectImageFormat(inputStream.readNBytes(32));
+        }
+    }
+
+    private void validateOwnedPhotoKey(Long userId, String key) {
+        String expectedPrefix = "users/" + userId + "/photos/";
+        if (!StringUtils.hasText(key) || !key.startsWith(expectedPrefix) || key.contains("..")) {
+            throw new BusinessException(403, "上传对象不属于当前用户");
+        }
     }
 
     private boolean startsWith(byte[] bytes, String text) {

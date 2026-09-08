@@ -1323,6 +1323,13 @@ body:has(.login-page) {
   margin-bottom: 12px;
 }
 
+.upload-help-text {
+  margin: -4px 0 12px;
+  color: #6f756d;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .upload-preview-item,
 .upload-add {
   width: 108px;

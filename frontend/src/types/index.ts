@@ -51,6 +51,7 @@ export interface CosCredential {
   startTime: number
   expiredTime: number
   allowPrefix: string
+  publicReadAclEnabled: boolean
 }
 
 export interface CosUploadResult {
