@@ -138,22 +138,24 @@ const AutoHeight = () => {
 
   const updateListInfos = () => {
     // 当可视数据变更时候，listInfoRefs也会变，所以此时的listInfoRefs就是最新数据
-    // 循环最新数据可以获取到真实高度，根据默认height，计算出差值，将差值添加到bottom和height上
+    // 循环最新数据可以获取到真实高度，根据默认height，计算出差值，将差值添加到bottom上并更新最新height值
     // 并更新所有后续元素的top和bottom
     listInfoRefs.current.map((v: any) => {
       const current = listInfo.current[Number(v.dataset.index)];
       const diff = v.clientHeight - current.height;
-      // 判断是否diff为了避免已经滚动到底后，数据都是最新值后的无效重复渲染。只有diff才进去
+      // 判断是否diff有值，为了避免已经滚动到底后，数据都是最新值后的无效重复渲染。
+      // 只有diff有值，或者说第一次渲染计算才执行后续步骤。
       if (diff) {
         current.height = v.clientHeight;
         current.bottom += diff;
+        // 需要将diff同步更新到后续所有top和bottom上，更新最新值
         for (let x = current.index + 1; x < listInfo.current.length; x++) {
           listInfo.current[x].top += diff;
           listInfo.current[x].bottom += diff;
         }
       }
     });
-    // 最后更新一遍占位元素高度
+    // 最后占位元素高度，最后一项的bottom值
     setListItemHeights(listInfo.current[listInfo.current.length - 1].bottom);
   };
 

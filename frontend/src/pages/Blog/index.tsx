@@ -145,10 +145,17 @@ const BlogHome = () => {
                 <article key={post.id} className="blog-timeline-row">
                   <span className="blog-row-index">{String(index + 2).padStart(2, '0')}</span>
                   <div className="blog-row-main">
-                    <span className="blog-post-category">{post.category?.name || '未分类'}</span>
-                    <h3><Link to={`/blog/${post.slug}`}>{post.title}</Link></h3>
-                    <p>{post.excerpt}</p>
-                    <div className="blog-inline-tags">{post.tags.map((item) => <span key={item.id}>#{item.name}</span>)}</div>
+                    {post.coverUrl && (
+                      <Link className="blog-row-cover" to={`/blog/${post.slug}`} aria-label={`阅读文章：${post.title}`}>
+                        <img src={post.coverUrl} alt="" loading="lazy" decoding="async" />
+                      </Link>
+                    )}
+                    <div className="blog-row-copy">
+                      <span className="blog-post-category">{post.category?.name || '未分类'}</span>
+                      <h3><Link to={`/blog/${post.slug}`}>{post.title}</Link></h3>
+                      <p>{post.excerpt}</p>
+                      <div className="blog-inline-tags">{post.tags.map((item) => <span key={item.id}>#{item.name}</span>)}</div>
+                    </div>
                   </div>
                   <div className="blog-row-date">
                     <time>{formatBlogDate(post.publishedAt)}</time>
