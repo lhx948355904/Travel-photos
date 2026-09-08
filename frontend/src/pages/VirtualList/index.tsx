@@ -24,7 +24,8 @@ const FixHeight = () => {
   const scrollNum = useRef(0);
 
   useEffect(() => {
-    maxCount.current = listContainerRef.current?.clientHeight! / ITEM_HEIGHT;
+    maxCount.current =
+      listContainerRef.current?.clientHeight! / ITEM_HEIGHT + 1;
     setStart(0);
     setEnd(maxCount.current);
   }, []);
