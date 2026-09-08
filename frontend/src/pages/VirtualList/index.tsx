@@ -7,8 +7,9 @@ import React, {
 } from "react";
 import "./index.css";
 import { Tabs } from "antd";
+// @ts-ignore
 import { faker } from "https://esm.sh/@faker-js/faker";
-import { debounce, throttle } from "lodash";
+
 const ITEM_HEIGHT = 50;
 
 const FixHeight = () => {
