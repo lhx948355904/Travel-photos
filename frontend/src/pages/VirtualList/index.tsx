@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./index.css";
 import { Tabs } from "antd";
 // @ts-ignore
@@ -69,8 +63,8 @@ const FixHeight = () => {
 };
 
 const data = new Array(1000)
-      .fill({})
-      .map((_, index) => ({ index, text: faker.lorem.sentences() }))
+  .fill({})
+  .map((_, index) => ({ index, text: faker.lorem.sentences() }));
 
 const AutoHeight = () => {
   const [start, setStart] = useState(0);
@@ -78,9 +72,7 @@ const AutoHeight = () => {
   const maxNum = useRef(0);
   const [scrollNum, setScrollNum] = useState(0);
   const listContentRef = useRef<HTMLDivElement>(null);
-  const listData = useRef(
-    data
-  );
+  const listData = useRef(data);
   const listInfo = useRef<any>([]);
   const listInfoRefs = useRef<any>([]);
   const [listItemHeights, setListItemHeights] = useState<any>(
@@ -93,7 +85,7 @@ const AutoHeight = () => {
     maxNum.current = listContentRef.current?.clientHeight! / ITEM_HEIGHT;
     setStart(0);
     setEnd(Math.min(maxNum.current, listInfo.current.length));
-    listInfo.current = listData.current.map((item: any, index) => ({
+    listInfo.current = listData.current.map((_: any, index) => ({
       index,
       height: ITEM_HEIGHT,
       top: index * ITEM_HEIGHT,
