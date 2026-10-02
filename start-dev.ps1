@@ -33,6 +33,55 @@ function Assert-Command {
   }
 }
 
+function Test-JdkHome {
+  param([string]$JdkHome)
+
+  if (-not $JdkHome) { return $false }
+  foreach ($file in @('bin\java.exe', 'bin\javac.exe', 'release')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $JdkHome $file) -PathType Leaf)) {
+      return $false
+    }
+  }
+
+  $release = Get-Content -LiteralPath (Join-Path $JdkHome 'release') -Raw
+  return $release -match '(?m)^JAVA_VERSION="(\d+)' -and [int]$Matches[1] -ge 17
+}
+
+function Initialize-Java {
+  # Maven uses JAVA_HOME even when a different java.exe is on PATH.
+  $candidates = @($env:JAVA_HOME)
+  $javac = Get-Command javac.exe -ErrorAction SilentlyContinue
+  if ($javac) {
+    $candidates += Split-Path (Split-Path $javac.Source -Parent) -Parent
+  }
+
+  $searchRoots = @(
+    (Join-Path $env:USERPROFILE '.jdks'),
+    (Join-Path $env:ProgramFiles 'Java'),
+    (Join-Path $env:ProgramFiles 'Eclipse Adoptium'),
+    (Join-Path $env:ProgramFiles 'Microsoft'),
+    $toolsDir
+  )
+  foreach ($root in $searchRoots) {
+    if (Test-Path -LiteralPath $root) {
+      $candidates += Get-ChildItem -LiteralPath $root -Directory | Sort-Object Name -Descending |
+        Select-Object -ExpandProperty FullName
+    }
+  }
+
+  foreach ($candidate in ($candidates | Select-Object -Unique)) {
+    if (Test-JdkHome $candidate) {
+      # Only change this launcher and its child processes, not system settings.
+      $env:JAVA_HOME = $candidate
+      $env:PATH = (Join-Path $candidate 'bin') + ';' + $env:PATH
+      Write-Host "Using JDK: $candidate"
+      return
+    }
+  }
+
+  throw "No usable JDK 17 or newer found. JAVA_HOME='$env:JAVA_HOME'. Install JDK 17+ and set JAVA_HOME to its root directory (containing bin\java.exe and bin\javac.exe), then run start-dev.bat again."
+}
+
 function Get-DockerComposeCommand {
   if (-not (Test-Command "docker")) {
     return $null
@@ -118,6 +167,7 @@ $Command
   $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($windowCommand))
 
   Start-Process powershell.exe -ArgumentList @(
+    "-NoProfile",
     "-NoExit",
     "-ExecutionPolicy", "Bypass",
     "-EncodedCommand", $encodedCommand
@@ -181,7 +231,7 @@ if ($useDocker) {
   return
 }
 
-Assert-Command "java" "Install JDK 17 or newer, then reopen this terminal."
+Initialize-Java
 $mavenCommand = Get-MavenCommand
 if (-not $mavenCommand) {
   $mavenCommand = Install-PortableMaven

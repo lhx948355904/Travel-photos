@@ -1,11 +1,12 @@
 import { ArrowLeftOutlined, ClockCircleOutlined, HomeOutlined } from '@ant-design/icons'
 import { Button, Result, Skeleton } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, useParams } from 'react-router-dom'
 import { getBlogPost } from '../../api/blog'
 import BlogHeader from '../../components/BlogHeader'
 import BlogMarkdown from '../../components/BlogMarkdown'
+import ArticleOutline from '../../components/ArticleOutline'
 import type { BlogPostDetail } from '../../types/blog'
 import { formatBlogDate } from './utils'
 
@@ -14,6 +15,7 @@ const BlogDetailPage = () => {
   const [detail, setDetail] = useState<BlogPostDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const articleRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     let active = true
@@ -89,7 +91,8 @@ const BlogDetailPage = () => {
       </header>
 
       <div className="blog-article-layout">
-        <article className="blog-article-content"><BlogMarkdown content={detail.contentMarkdown} /></article>
+        <ArticleOutline key={post.slug} articleRef={articleRef} content={detail.contentMarkdown} />
+        <article id="blog-article-body" ref={articleRef} className="blog-article-content"><BlogMarkdown content={detail.contentMarkdown} /></article>
       </div>
 
       <footer className="blog-article-footer">
