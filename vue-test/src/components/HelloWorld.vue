@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref, watch, watchEffect, reactive, computed, onWatcherCleanup, watchSyncEffect, watchPostEffect, toRef, unref, isRef, isReactive, isProxy, shallowRef, toRaw } from 'vue'
+import {
+  ref,
+  watchEffect,
+  reactive,
+  toRaw,
+} from 'vue'
 import { Button } from 'ant-design-vue'
 
-const obj = {c: 3}
+const obj = { c: 3 }
 const ref1 = ref(obj)
 console.log(obj === toRaw(ref1.value))
 
@@ -21,10 +26,7 @@ raw.count = 20
 state.count = 30
 // 通过代理修改，effect 会重新执行
 
-function clickMe() {
-}
-
-
+function clickMe() {}
 </script>
 
 <template>
