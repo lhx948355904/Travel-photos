@@ -146,6 +146,8 @@ DEPLOY_SKIP_GIT_UPDATE=1 bash scripts/deploy-server.sh
 # End of deployment payload. Keep this final comment so PowerShell's trailing CRLF is harmless.
 "@
 
+  # Bash expects LF line endings; a CR after "pipefail" makes it an invalid option.
+  $remoteScript = $remoteScript.Replace("`r`n", "`n")
   Invoke-Ssh -RemoteCommand "bash -s" -StandardInput $remoteScript
 } finally {
   if (Test-Path -LiteralPath $bundlePath) {
