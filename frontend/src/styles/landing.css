@@ -186,18 +186,6 @@
   outline: none;
 }
 
-.landing-nav__links .landing-nav__cta {
-  color: #152033;
-  background: #fff;
-}
-
-.landing-nav__links .landing-nav__cta:hover,
-.landing-nav__links .landing-nav__cta:focus-visible {
-  color: #152033;
-  background: rgba(255, 255, 255, 0.92);
-  transform: translateY(-1px);
-}
-
 .landing-menu-button {
   position: relative;
   z-index: 60;
@@ -293,29 +281,6 @@
 .landing-mobile-menu--open button {
   opacity: 1;
   transform: translateY(0);
-}
-
-.landing-mobile-menu .landing-mobile-menu__cta {
-  min-height: 52px;
-  margin-top: 16px;
-  border-radius: 999px;
-  padding: 0 26px;
-  color: #182c41;
-  background: #fff;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    "Microsoft YaHei",
-    sans-serif;
-  font-size: 15px;
-  font-weight: 760;
-  transform: translateY(16px) scale(0.94);
-}
-
-.landing-mobile-menu--open .landing-mobile-menu__cta {
-  transform: translateY(0) scale(1);
 }
 
 .landing-hero {

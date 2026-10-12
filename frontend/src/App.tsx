@@ -7,7 +7,6 @@ import Login from "./pages/Login";
 import Map from "./pages/Map";
 import VirtualList from "./pages/VirtualList";
 
-const Universe = lazy(() => import("./pages/Universe"));
 const BlogHome = lazy(() => import("./pages/Blog"));
 const BlogDetail = lazy(() => import("./pages/Blog/Detail"));
 const BlogEditor = lazy(() => import("./pages/Blog/Editor"));
@@ -81,18 +80,6 @@ function App() {
               <BlogRoute>
                 <BlogDetail />
               </BlogRoute>
-            }
-          />
-          <Route
-            path="/universe"
-            element={
-              <Suspense
-                fallback={
-                  <div className="route-loading">正在进入照片宇宙…</div>
-                }
-              >
-                <Universe />
-              </Suspense>
             }
           />
           <Route path="/virtualList" element={<VirtualList />} />

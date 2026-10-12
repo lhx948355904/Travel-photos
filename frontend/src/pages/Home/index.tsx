@@ -4,7 +4,6 @@ import {
   CompassOutlined,
   EnvironmentOutlined,
   FieldTimeOutlined,
-  GlobalOutlined,
   MailOutlined,
   MenuOutlined,
   PhoneOutlined,
@@ -155,7 +154,7 @@ const cinematicStories: StoryBase[] = [
       sections: [
         {
           title: "技术框架",
-          body: "Ubuntu + Docker + Nginx + React 18 + TypeScript + Vite + Ant Design 5 + 高德地图 API + Spring Boot 3 + Java 17 + MyBatis-Plus + PostgreSQL/PostGIS + 腾讯云 COS + JWT + WebSocket + Codex",
+          body: "Ubuntu + Docker + Nginx + React 18 + TypeScript + Vite + Ant Design 5 + 高德地图 API + Spring Boot 3 + Java 17 + MyBatis-Plus + PostgreSQL/PostGIS + 腾讯云 COS + JWT + Codex",
         },
       ],
     },
@@ -166,11 +165,8 @@ const overlayImage =
   "https://soft-zoom-63098134.figma.site/_assets/v11/0b4a435b2df2747593c43d7a1c9b4578f7d8d90c.png";
 
 const navLinks = [
-  { label: "地图故事", path: "/map", action: "navigate" as const },
-  { label: "照片归档", path: "/map", action: "navigate" as const },
-  { label: "技术栈", path: "/map", action: "navigate" as const },
-  { label: "知识博客", path: "/blog", action: "navigate" as const },
-  { label: "维护入口", path: "/login", action: "navigate" as const },
+  { label: "地图故事", path: "/map" },
+  { label: "知识博客", path: "/blog" },
 ];
 
 const baseStats = [
@@ -209,12 +205,8 @@ const Home = () => {
     navigate("/map");
   }, [navigate]);
 
-  const enterUniverse = useCallback(() => {
-    navigate("/universe");
-  }, [navigate]);
-
   const handleNavItem = (item: (typeof navLinks)[number]) => {
-    if (item.action === "navigate") navigate(item.path);
+    navigate(item.path);
   };
 
   const handleVideoSwitch = (index: number) => {
@@ -308,16 +300,6 @@ const Home = () => {
                   {item.label}
                 </button>
               ))}
-              <button type="button" onClick={enterUniverse}>
-                照片宇宙
-              </button>
-              <button
-                type="button"
-                className="landing-nav__cta"
-                onClick={enterMap}
-              >
-                打开地图
-              </button>
             </nav>
 
             <button
@@ -355,28 +337,6 @@ const Home = () => {
                   {item.label}
                 </button>
               ))}
-              <button
-                type="button"
-                style={{ "--delay": "290ms" } as CSSProperties}
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  enterUniverse();
-                }}
-              >
-                <GlobalOutlined />
-                照片宇宙
-              </button>
-              <button
-                type="button"
-                className="landing-mobile-menu__cta"
-                style={{ "--delay": "300ms" } as CSSProperties}
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  enterMap();
-                }}
-              >
-                进入地图
-              </button>
             </nav>
           </div>
 

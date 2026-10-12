@@ -46,15 +46,6 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       LOCAL_UPLOAD_DIR: /app/data/uploads
       THRIFT_SERVER_HOST: 0.0.0.0
-      AI_ENABLED: ${AI_ENABLED:-false}
-      AI_PUBLIC_ENABLED: ${AI_PUBLIC_ENABLED:-false}
-      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
-      DASHSCOPE_BASE_URL: ${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com}
-      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-qwen3-vl-embedding}
-      AI_EMBEDDING_DIMENSION: ${AI_EMBEDDING_DIMENSION:-1024}
-      AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen3-vl-flash}
-      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-qwen3.6-flash}
-      AI_RAG_DAILY_GENERATION_LIMIT: ${AI_RAG_DAILY_GENERATION_LIMIT:-300}
     volumes:
       - ./backend/data:/app/data
     ports:

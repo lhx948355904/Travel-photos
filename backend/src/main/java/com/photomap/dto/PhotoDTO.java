@@ -12,6 +12,4 @@ public class PhotoDTO {
     private String orientation;
     private Long fileSize;
     private String shotDate;
-    private String caption;
-    private String tags;
 }

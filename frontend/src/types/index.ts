@@ -11,8 +11,6 @@ export interface Photo {
   shotDate?: string
   status?: PhotoStatus
   reviewReason?: string
-  caption?: string
-  tags?: string
   sortOrder: number
 }
 
@@ -38,8 +36,6 @@ export interface PhotoUploadInfo {
   orientation: Orientation
   fileSize: number
   shotDate?: string
-  caption?: string
-  tags?: string
 }
 
 export interface CosCredential {
@@ -59,48 +55,4 @@ export interface CosUploadResult {
   url: string
   status?: PhotoStatus
   reviewReason?: string
-}
-
-export interface SearchPhotoResult {
-  photoId: number
-  locationId: number
-  locationName: string
-  url: string
-  thumbUrl: string
-  shotDate?: string
-  caption?: string
-  tags?: string
-  score: number
-}
-
-export type RagSearchMode = 'rag' | 'semantic' | 'keyword'
-
-export interface PhotoIndexCoverage {
-  ready: number
-  total: number
-}
-
-export interface RagPhotoSearchResponse {
-  answer: string | null
-  mode: RagSearchMode
-  citationPhotoIds: number[]
-  evidence: SearchPhotoResult[]
-  indexCoverage: PhotoIndexCoverage
-  warning: string | null
-  requestId: string
-}
-
-export interface PhotoIndexStatus {
-  total: number
-  ready: number
-  pending: number
-  processing: number
-  failed: number
-  lastIndexedAt: string | null
-  aiEnabled: boolean
-  providerReady: boolean
-}
-
-export interface PhotoIndexRebuildResult {
-  queued: number
 }
