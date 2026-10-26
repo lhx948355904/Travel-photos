@@ -16,12 +16,19 @@ export interface ScoreRecord {
   note: string | null
   imageKey: string | null
   imageUrl: string | null
+  images?: ScoreImage[]
   updatedAt: string
   frames: ScoreFrame[]
 }
 
-export type ScoreInput = Omit<ScoreRecord, 'id' | 'imageUrl' | 'updatedAt' | 'frames'> & {
+export type ScoreInput = Omit<ScoreRecord, 'id' | 'imageUrl' | 'updatedAt' | 'frames' | 'images'> & {
   frames: Pick<ScoreFrame, 'pointsOne' | 'pointsTwo'>[]
+  imageKeys: string[]
+}
+
+export interface ScoreImage {
+  imageKey: string
+  imageUrl: string
 }
 
 export interface ScorePage {

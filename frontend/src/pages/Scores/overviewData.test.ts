@@ -4,7 +4,7 @@ import { collectMatchups, matchTrend, playerRecord } from './overviewData'
 
 const match = (id: number, playerOne: string, playerTwo: string, scoreOne: number, scoreTwo: number, date: string): ScoreRecord => ({
   id, title: `比赛 ${id}`, playerOne, playerTwo, scoreOne, scoreTwo, playedAt: `${date}T18:00:00`,
-  venue: null, note: null, imageKey: null, imageUrl: null, updatedAt: `${date}T18:00:00`, frames: [],
+  venue: null, note: null, imageKey: null, imageUrl: null, images: [], updatedAt: `${date}T18:00:00`, frames: [],
 })
 
 describe('比赛统计', () => {

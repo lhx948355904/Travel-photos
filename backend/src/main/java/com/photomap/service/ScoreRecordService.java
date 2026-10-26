@@ -6,11 +6,14 @@ import com.photomap.common.BusinessException;
 import com.photomap.dto.BlogPageVO;
 import com.photomap.dto.ScoreFrameInput;
 import com.photomap.dto.ScoreFrameVO;
+import com.photomap.dto.ScoreImageVO;
 import com.photomap.dto.ScoreRecordRequest;
 import com.photomap.dto.ScoreRecordVO;
 import com.photomap.entity.ScoreFrame;
+import com.photomap.entity.ScoreImage;
 import com.photomap.entity.ScoreRecord;
 import com.photomap.mapper.ScoreFrameMapper;
+import com.photomap.mapper.ScoreImageMapper;
 import com.photomap.mapper.ScoreRecordMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +32,7 @@ import java.util.stream.Collectors;
 public class ScoreRecordService {
     private final ScoreRecordMapper mapper;
     private final ScoreFrameMapper frameMapper;
+    private final ScoreImageMapper imageMapper;
     private final SiteOwnerService siteOwnerService;
     private final CosStsService cosStsService;
 
@@ -65,9 +69,16 @@ public class ScoreRecordService {
                                 .orderByAsc(ScoreFrame::getFrameNumber))
                         .stream().collect(Collectors.groupingBy(ScoreFrame::getRecordId,
                                 Collectors.mapping(this::toFrameView, Collectors.toList())));
+        Map<Long, List<ScoreImageVO>> imagesByRecord = recordIds.isEmpty() ? Map.of() :
+                imageMapper.selectList(new LambdaQueryWrapper<ScoreImage>()
+                                .in(ScoreImage::getRecordId, recordIds)
+                                .orderByAsc(ScoreImage::getSortOrder))
+                        .stream().collect(Collectors.groupingBy(ScoreImage::getRecordId,
+                                Collectors.mapping(this::toImageView, Collectors.toList())));
         return BlogPageVO.<ScoreRecordVO>builder()
                 .items(result.getRecords().stream()
-                        .map(record -> toView(record, framesByRecord.getOrDefault(record.getId(), List.of())))
+                        .map(record -> toView(record, framesByRecord.getOrDefault(record.getId(), List.of()),
+                                imagesByRecord.getOrDefault(record.getId(), List.of())))
                         .toList())
                 .page(result.getCurrent()).pageSize(result.getSize())
                 .total(result.getTotal()).totalPages(result.getPages()).build();
@@ -80,7 +91,8 @@ public class ScoreRecordService {
         apply(record, request, userId);
         mapper.insert(record);
         saveFrames(record.getId(), request.getFrames());
-        return toView(record, framesFor(record.getId()));
+        saveImages(record.getId(), imageKeys(request));
+        return toView(record, framesFor(record.getId()), imagesFor(record.getId()));
     }
 
     @Transactional
@@ -89,7 +101,8 @@ public class ScoreRecordService {
         apply(record, request, userId);
         mapper.updateById(record);
         saveFrames(record.getId(), request.getFrames());
-        return toView(record, framesFor(record.getId()));
+        saveImages(record.getId(), imageKeys(request));
+        return toView(record, framesFor(record.getId()), imagesFor(record.getId()));
     }
 
     @Transactional
@@ -110,8 +123,8 @@ public class ScoreRecordService {
             throw new BusinessException("双方比分不能同时为 0");
         }
         validateFrames(input);
-        String key = StringUtils.hasText(input.getImageKey()) ? input.getImageKey().trim() : null;
-        if (key != null) {
+        List<String> keys = imageKeys(input);
+        for (String key : keys) {
             String prefix = "users/" + userId + "/scores/";
             if (!key.startsWith(prefix) || key.contains("..") || key.length() > 512 || !cosStsService.objectExists(key)) {
                 throw new BusinessException("比分图片不存在或不属于当前管理员");
@@ -125,7 +138,40 @@ public class ScoreRecordService {
         record.setPlayedAt(input.getPlayedAt());
         record.setVenue(StringUtils.hasText(input.getVenue()) ? input.getVenue().trim() : null);
         record.setNote(StringUtils.hasText(input.getNote()) ? input.getNote().trim() : null);
-        record.setImageKey(key);
+        record.setImageKey(keys.isEmpty() ? null : keys.get(0));
+    }
+
+    private List<String> imageKeys(ScoreRecordRequest input) {
+        List<String> keys = input.getImageKeys() == null
+                ? (StringUtils.hasText(input.getImageKey()) ? List.of(input.getImageKey()) : List.of())
+                : input.getImageKeys();
+        if (keys.size() > ScoreRecordRequest.MAX_IMAGES_PER_RECORD || keys.stream().anyMatch(key -> !StringUtils.hasText(key))
+                || keys.stream().map(String::trim).distinct().count() != keys.size()) {
+            throw new BusinessException("每场最多上传 20 张不重复的图片");
+        }
+        return keys.stream().map(String::trim).toList();
+    }
+
+    private void saveImages(Long recordId, List<String> keys) {
+        imageMapper.delete(new LambdaQueryWrapper<ScoreImage>().eq(ScoreImage::getRecordId, recordId));
+        for (int index = 0; index < keys.size(); index++) {
+            ScoreImage image = new ScoreImage();
+            image.setRecordId(recordId);
+            image.setImageKey(keys.get(index));
+            image.setSortOrder(index);
+            imageMapper.insert(image);
+        }
+    }
+
+    private List<ScoreImageVO> imagesFor(Long recordId) {
+        return imageMapper.selectList(new LambdaQueryWrapper<ScoreImage>()
+                        .eq(ScoreImage::getRecordId, recordId)
+                        .orderByAsc(ScoreImage::getSortOrder))
+                .stream().map(this::toImageView).toList();
+    }
+
+    private ScoreImageVO toImageView(ScoreImage image) {
+        return new ScoreImageVO(image.getImageKey(), cosStsService.resolvePublicUrl(image.getImageKey(), null));
     }
 
     private void validateFrames(ScoreRecordRequest input) {
@@ -174,11 +220,11 @@ public class ScoreRecordService {
         return new ScoreFrameVO(frame.getFrameNumber(), frame.getPointsOne(), frame.getPointsTwo());
     }
 
-    private ScoreRecordVO toView(ScoreRecord record, List<ScoreFrameVO> frames) {
-        String key = record.getImageKey();
-        String url = StringUtils.hasText(key) ? cosStsService.resolvePublicUrl(key, null) : null;
+    private ScoreRecordVO toView(ScoreRecord record, List<ScoreFrameVO> frames, List<ScoreImageVO> images) {
+        String key = images.isEmpty() ? null : images.get(0).imageKey();
+        String url = images.isEmpty() ? null : images.get(0).imageUrl();
         return new ScoreRecordVO(record.getId(), record.getTitle(), record.getPlayerOne(),
                 record.getPlayerTwo(), record.getScoreOne(), record.getScoreTwo(), record.getPlayedAt(),
-                record.getVenue(), record.getNote(), key, url, record.getUpdatedAt(), frames);
+                record.getVenue(), record.getNote(), key, url, record.getUpdatedAt(), frames, images);
     }
 }

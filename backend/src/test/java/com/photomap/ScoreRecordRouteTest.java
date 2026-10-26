@@ -52,6 +52,9 @@ class ScoreRecordRouteTest {
         mockMvc.perform(get("/api/scores"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
+        mockMvc.perform(get("/api/scores/capabilities"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.maxImagesPerRecord").value(20));
         mockMvc.perform(post("/api/admin/scores").contentType(MediaType.APPLICATION_JSON)
                         .content(input("公开赛", 5, 3)))
                 .andExpect(status().isUnauthorized());
@@ -105,6 +108,11 @@ class ScoreRecordRouteTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(input("测试", 1, 0).replace("\"note\":\"精彩一局\"", "\"imageKey\":\"users/999/scores/fake.png\"")))
                 .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/admin/scores").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(input("测试", 1, 0).replace("\"note\":\"精彩一局\"",
+                                "\"imageKeys\":[\"users/999/scores/fake.png\"]")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -135,6 +143,45 @@ class ScoreRecordRouteTest {
                 .andExpect(jsonPath("$.data.imageUrl").isEmpty());
         mockMvc.perform(get("/api/scores").param("q", "图片测试赛"))
                 .andExpect(jsonPath("$.data.items[0].imageUrl").isEmpty());
+    }
+
+    @Test
+    void multipleImagesAreReturnedInOrderAndCanBeRemovedIndividually() throws Exception {
+        String token = adminToken();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(3, 2, BufferedImage.TYPE_INT_RGB), "png", bytes);
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        String firstUpload = mockMvc.perform(multipart("/api/admin/scores/image")
+                        .file(new MockMultipartFile("file", "one.png", "image/png", bytes.toByteArray()))
+                        .header("Authorization", token))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String secondUpload = mockMvc.perform(multipart("/api/admin/scores/image")
+                        .file(new MockMultipartFile("file", "two.png", "image/png", bytes.toByteArray()))
+                        .header("Authorization", token))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String firstKey = mapper.readTree(firstUpload).path("data").path("cosKey").asText();
+        String secondKey = mapper.readTree(secondUpload).path("data").path("cosKey").asText();
+        String imageKeys = "\"imageKeys\":[\"" + firstKey + "\",\"" + secondKey + "\"]";
+        String created = mockMvc.perform(post("/api/admin/scores").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(input("多图比赛", 2, 1).replace("\"note\":\"精彩一局\"", imageKeys)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.images.length()").value(2))
+                .andExpect(jsonPath("$.data.images[0].imageKey").value(firstKey))
+                .andExpect(jsonPath("$.data.images[1].imageKey").value(secondKey))
+                .andReturn().getResponse().getContentAsString();
+        long id = mapper.readTree(created).path("data").path("id").asLong();
+        mockMvc.perform(get("/api/scores").param("q", "多图比赛"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].images.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].images[1].imageKey").value(secondKey));
+        mockMvc.perform(put("/api/admin/scores/{id}", id).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(input("多图比赛", 2, 1).replace("\"note\":\"精彩一局\"",
+                                "\"imageKeys\":[\"" + secondKey + "\"]")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.images.length()").value(1))
+                .andExpect(jsonPath("$.data.images[0].imageKey").value(secondKey));
     }
 
     @Test

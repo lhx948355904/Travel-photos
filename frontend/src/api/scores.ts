@@ -4,6 +4,9 @@ import type { ScoreInput, ScorePage, ScoreRecord } from '../types/scores'
 export const getScores = (params: { page: number; pageSize: number; q?: string; month?: string }) =>
   request.get<never, ScorePage>('/scores', { params })
 
+export const getScoreCapabilities = () =>
+  request.get<never, { maxImagesPerRecord: number }>('/scores/capabilities')
+
 export const createScore = (input: ScoreInput) =>
   request.post<never, ScoreRecord>('/admin/scores', input)
 

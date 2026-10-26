@@ -2,6 +2,8 @@ package com.photomap.controller;
 
 import com.photomap.common.ApiResponse;
 import com.photomap.dto.BlogPageVO;
+import com.photomap.dto.ScoreCapabilitiesVO;
+import com.photomap.dto.ScoreRecordRequest;
 import com.photomap.dto.ScoreRecordVO;
 import com.photomap.service.ScoreRecordService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ScoreRecordController {
     private final ScoreRecordService service;
+
+    @GetMapping("/capabilities")
+    public ApiResponse<ScoreCapabilitiesVO> capabilities() {
+        return ApiResponse.success(new ScoreCapabilitiesVO(ScoreRecordRequest.MAX_IMAGES_PER_RECORD));
+    }
 
     @GetMapping
     public ApiResponse<BlogPageVO<ScoreRecordVO>> list(

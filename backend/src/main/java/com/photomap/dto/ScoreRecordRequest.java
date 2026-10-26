@@ -34,6 +34,10 @@ public class ScoreRecordRequest {
     @Size(max = 300)
     private String note;
     private String imageKey;
+    @Size(max = ScoreRecordRequest.MAX_IMAGES_PER_RECORD, message = "每场比赛最多上传 20 张图片")
+    private List<@NotBlank String> imageKeys;
+
+    public static final int MAX_IMAGES_PER_RECORD = 20;
 
     @Size(max = 35, message = "最多记录 35 局")
     private List<@Valid ScoreFrameInput> frames = new ArrayList<>();

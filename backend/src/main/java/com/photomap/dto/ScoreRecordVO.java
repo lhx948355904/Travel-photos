@@ -7,5 +7,5 @@ public record ScoreRecordVO(
         Long id, String title, String playerOne, String playerTwo,
         Integer scoreOne, Integer scoreTwo, LocalDateTime playedAt,
         String venue, String note, String imageKey, String imageUrl,
-        LocalDateTime updatedAt, List<ScoreFrameVO> frames) {
+        LocalDateTime updatedAt, List<ScoreFrameVO> frames, List<ScoreImageVO> images) {
 }

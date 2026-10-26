@@ -104,7 +104,7 @@ flyway_v3_count="$(
 
 score_migration_count="$(
   docker compose exec -T db sh -lc \
-    'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -Atc "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN (CAST(4 AS VARCHAR), CAST(5 AS VARCHAR)) AND success;"' \
+    'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -Atc "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN (CAST(4 AS VARCHAR), CAST(5 AS VARCHAR), CAST(6 AS VARCHAR)) AND success;"' \
     | tr -d '\r'
 )"
 
@@ -113,8 +113,8 @@ if [ "$flyway_v3_count" -lt 1 ]; then
   exit 1
 fi
 
-if [ "$score_migration_count" -ne 2 ]; then
-  echo "[deploy] Flyway V4/V5 score migrations are missing"
+if [ "$score_migration_count" -ne 3 ]; then
+  echo "[deploy] Flyway V4/V5/V6 score migrations are missing"
   exit 1
 fi
 
@@ -160,7 +160,17 @@ if [ "$score_api_ready" != true ]; then
   exit 1
 fi
 
-echo "[deploy] blog and score APIs verified (PostgreSQL blog rows: ${blog_row_count}, Flyway V3/V4/V5: applied)"
+score_capabilities="$(
+  docker compose exec -T frontend \
+    wget -qO- 'http://backend:8080/api/scores/capabilities' 2>/dev/null \
+    || true
+)"
+if ! printf '%s' "$score_capabilities" | grep -q '"maxImagesPerRecord":20'; then
+  echo "[deploy] score API does not advertise multi-image support"
+  exit 1
+fi
+
+echo "[deploy] blog and score APIs verified (PostgreSQL blog rows: ${blog_row_count}, Flyway V3/V4/V5/V6: applied, multi-image API: ready)"
 
 echo "[deploy] pruning unused images"
 docker image prune -f
