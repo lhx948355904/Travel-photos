@@ -40,6 +40,8 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/locations/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/blog/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/scores/**").permitAll()
+                .requestMatchers("/api/admin/scores/**").hasRole("ADMIN")
                 .requestMatchers("/api/admin/blog/**").hasRole("ADMIN")
                 .requestMatchers("/api/cos/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/locations/**").authenticated()

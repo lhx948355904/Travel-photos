@@ -102,8 +102,19 @@ flyway_v3_count="$(
     | tr -d '\r'
 )"
 
+score_migration_count="$(
+  docker compose exec -T db sh -lc \
+    'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -Atc "SELECT COUNT(*) FROM flyway_schema_history WHERE version IN (CAST(4 AS VARCHAR), CAST(5 AS VARCHAR)) AND success;"' \
+    | tr -d '\r'
+)"
+
 if [ "$flyway_v3_count" -lt 1 ]; then
   echo "[deploy] Flyway V3 knowledge-blog migration is missing"
+  exit 1
+fi
+
+if [ "$score_migration_count" -ne 2 ]; then
+  echo "[deploy] Flyway V4/V5 score migrations are missing"
   exit 1
 fi
 
@@ -128,7 +139,28 @@ if [ "$blog_api_ready" != true ]; then
   exit 1
 fi
 
-echo "[deploy] blog storage verified (PostgreSQL rows: ${blog_row_count}, Flyway V3: applied)"
+score_api_ready=false
+for attempt in $(seq 1 20); do
+  response="$(
+    docker compose exec -T frontend \
+      wget -qO- 'http://backend:8080/api/scores?page=1&pageSize=1' 2>/dev/null \
+      || true
+  )"
+  if printf '%s' "$response" | grep -q '"code":0'; then
+    score_api_ready=true
+    break
+  fi
+  echo "[deploy] waiting for score API (${attempt}/20)"
+  sleep 2
+done
+
+if [ "$score_api_ready" != true ]; then
+  echo "[deploy] score API did not become ready"
+  docker compose logs --tail=100 backend frontend
+  exit 1
+fi
+
+echo "[deploy] blog and score APIs verified (PostgreSQL blog rows: ${blog_row_count}, Flyway V3/V4/V5: applied)"
 
 echo "[deploy] pruning unused images"
 docker image prune -f

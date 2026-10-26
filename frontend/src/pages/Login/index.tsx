@@ -22,6 +22,7 @@ const Login = () => {
   const redirect = requestedRedirect?.startsWith("/") && !requestedRedirect.startsWith("//")
     ? requestedRedirect
     : "/map";
+  const fromScores = redirect.startsWith("/scores");
   const isAdmin = useAuthStore((state) => state.isAdmin);
   const setToken = useAuthStore((state) => state.setToken);
   const [submitting, setSubmitting] = useState(false);
@@ -50,27 +51,29 @@ const Login = () => {
     <main className="login-page">
       <section className="login-shell" aria-label="管理员登录">
         <div className="login-brief">
-          <Link className="login-back-link" to="/map">
+          <Link className="login-back-link" to={fromScores ? "/scores" : "/map"}>
             <ArrowLeftOutlined />
-            返回地图
+            {fromScores ? "返回比分" : "返回地图"}
           </Link>
           <span className="login-kicker">Admin Workspace</span>
-          <h1>管理旅行地图</h1>
+          <h1>{fromScores ? "管理台球比分" : "管理旅行地图"}</h1>
           <p>
-            登录后可以新增地点、上传照片、编辑描述，并维护这份空间相册的公开展示内容。
+            {fromScores
+              ? "登录后可以记录比赛、修改比分并上传记分图片。"
+              : "登录后可以新增地点、上传照片、编辑描述，并维护这份空间相册的公开展示内容。"}
           </p>
           <div className="login-trust-list" aria-label="登录后的管理范围">
-            <span>地点维护</span>
-            <span>照片上传</span>
-            <span>内容编辑</span>
+            <span>{fromScores ? "比分维护" : "地点维护"}</span>
+            <span>{fromScores ? "图片上传" : "照片上传"}</span>
+            <span>{fromScores ? "比赛记录" : "内容编辑"}</span>
           </div>
         </div>
 
         <section className="login-card" aria-labelledby="login-title">
           <div className="login-card-heading">
-            <span>Travel Photo Map</span>
+            <span>{fromScores ? "Billiards Scorebook" : "Travel Photo Map"}</span>
             <h2 id="login-title">管理员登录</h2>
-            <p>使用管理员账号进入地图维护模式。</p>
+            <p>使用管理员账号进入{fromScores ? "比分" : "地图"}维护模式。</p>
           </div>
 
           <Form<LoginFormValues>

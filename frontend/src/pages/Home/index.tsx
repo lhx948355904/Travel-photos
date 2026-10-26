@@ -167,6 +167,7 @@ const overlayImage =
 const navLinks = [
   { label: "地图故事", path: "/map" },
   { label: "知识博客", path: "/blog" },
+  { label: "台球比分", path: "/scores" },
 ];
 
 const baseStats = [

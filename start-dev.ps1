@@ -269,7 +269,9 @@ Write-Host "Starting backend:  http://localhost:8080"
 Start-DevWindow "Travel Photo Map - Backend" $backendDir "& '$mavenCommand' spring-boot:run"
 
 Write-Host "Starting frontend: http://localhost:3000"
-Start-DevWindow "Travel Photo Map - Frontend" $frontendDir "npm run dev"
+$frontendCommand = if ($Local) { "npm run dev:local" } else { "npm run dev" }
+Write-Host "Frontend API: $(if ($Local) { 'local backend' } else { 'configured remote backend' })"
+Start-DevWindow "Travel Photo Map - Frontend" $frontendDir $frontendCommand
 
 if (-not $NoBrowser) {
   Start-Sleep -Seconds 2

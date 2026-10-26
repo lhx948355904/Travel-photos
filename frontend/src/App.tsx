@@ -12,6 +12,7 @@ const BlogDetail = lazy(() => import("./pages/Blog/Detail"));
 const BlogEditor = lazy(() => import("./pages/Blog/Editor"));
 const BlogManage = lazy(() => import("./pages/Blog/Manage"));
 const Test = lazy(() => import("./pages/Test"));
+const Scores = lazy(() => import("./pages/Scores"));
 
 const ICP_BEIAN_URL = "https://beian.miit.gov.cn/";
 const ICP_BEIAN_NUMBER = "沪ICP备2026036429号";
@@ -36,6 +37,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/map" element={<Map />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/scores" element={<Suspense fallback={<div className="route-loading">正在打开台球比分…</div>}><Scores /></Suspense>} />
           <Route
             path="/blog"
             element={

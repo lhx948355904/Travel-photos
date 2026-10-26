@@ -109,6 +109,17 @@ public class CosStsService {
         return uploadValidatedFile(userId, file, format, "photos");
     }
 
+    public CosUploadResponse uploadScoreImage(Long userId, MultipartFile file) {
+        if (file == null || file.isEmpty() || file.getSize() > MAX_BLOG_FILE_SIZE) {
+            throw new BusinessException("请选择不超过 10 MB 的比分图片");
+        }
+        String format = validateImage(file);
+        if (!BLOG_FORMATS.contains(format)) {
+            throw new BusinessException("比分图片仅支持 JPG、PNG 或 WebP");
+        }
+        return uploadValidatedFile(userId, file, format, "scores");
+    }
+
     public CosUploadResponse uploadBlogImage(Long userId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("请选择要上传的博客图片");
