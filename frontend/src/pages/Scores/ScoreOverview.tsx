@@ -37,9 +37,10 @@ export default function ScoreOverview({ records }: { records: ScoreRecord[] }) {
   if (!selected) return null
 
   const trend = matchTrend(selected)
-  const width = Math.max(availableWidth, trend.length * 96 + 100)
-  const left = 52
-  const right = width - 32
+  const compactChart = availableWidth < 520
+  const width = compactChart ? Math.max(availableWidth, 240) : Math.max(availableWidth, trend.length * 96 + 100)
+  const left = compactChart ? 34 : 52
+  const right = width - (compactChart ? 10 : 32)
   const top = 22
   const bottom = 186
   const maximum = Math.max(2, ...trend.flatMap((point) => [point.first, point.second]))
@@ -60,8 +61,8 @@ export default function ScoreOverview({ records }: { records: ScoreRecord[] }) {
       <div className="score-overview-trend">
         <div className="score-overview-panel-heading"><h3>每场胜局趋势</h3><span>{selected.records.length} 场交手</span></div>
         <div className="score-chart-legend"><span><i />{selected.first}</span><span><i className="is-second" />{selected.second}</span></div>
-        <div ref={chartContainer} className="score-chart-scroll" tabIndex={0} aria-label="横向滚动查看比赛日期走势">
-          <svg className="score-overview-line-chart" viewBox={`0 0 ${width} 242`} style={{ minWidth: `${width}px` }} role="img" aria-label={`${selected.first} 和 ${selected.second} 按比赛日期的胜局趋势`}>
+        <div ref={chartContainer} className={`score-chart-scroll ${compactChart ? 'is-compact' : ''}`} tabIndex={compactChart ? -1 : 0} aria-label={compactChart ? '完整比赛日期走势' : '横向滚动查看比赛日期走势'}>
+          <svg className="score-overview-line-chart" viewBox={`0 0 ${width} 242`} style={{ minWidth: compactChart ? '100%' : `${width}px` }} role="img" aria-label={`${selected.first} 和 ${selected.second} 按比赛日期的胜局趋势`}>
             {GRID.map((fraction) => <g key={fraction}>
               <line className="score-trend-grid" x1={left} x2={right} y1={y(maximum * fraction)} y2={y(maximum * fraction)} />
               <text className="score-trend-axis" x={left - 12} y={y(maximum * fraction) + 4} textAnchor="end">{Math.round(maximum * fraction)}</text>

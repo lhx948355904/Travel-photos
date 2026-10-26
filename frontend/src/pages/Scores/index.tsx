@@ -76,7 +76,7 @@ function ScoresPage() {
   const reload = useCallback(() => setRevision((value) => value + 1), [])
 
   const startStackPan = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || (event.target as HTMLElement).closest('button, a, input, textarea, select')) return
+    if (event.pointerType === 'touch' || event.button !== 0 || (event.target as HTMLElement).closest('button, a, input, textarea, select')) return
     stackPan.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
