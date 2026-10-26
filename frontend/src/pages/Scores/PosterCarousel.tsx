@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 const posters = [
   {
     name: ['Ronnie', 'O’Sullivan'], chinese: '罗尼·奥沙利文',
-    event: '2026 German Masters', image: '/scores/ronnie.jpg', position: '52% 49%',
-    source: "https://commons.wikimedia.org/wiki/File:Ronnie_O%27Sullivan_2026_(3).jpg",
-    author: 'Andrej146', license: 'CC0 1.0', licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    event: 'World Championship', image: '/scores/ronnie-fist.png', position: '50% 48%',
+    source: 'https://www.sportingnews.com/uk/snooker/news/world-snooker-championship-crucible-147-maximum-break/glh8j0qwdt7zdnu2i10k3vmp',
+    author: '用户提供', license: '画面资料',
+    licenseUrl: 'https://www.sportingnews.com/uk/snooker/news/world-snooker-championship-crucible-147-maximum-break/glh8j0qwdt7zdnu2i10k3vmp',
     achievement: '七届世锦赛冠军，41 座排名赛冠军。',
     achievementSource: 'https://www.wst.tv/snookerforbeginners/whoarethebestplayers/',
   },

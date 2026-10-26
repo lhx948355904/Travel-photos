@@ -3,7 +3,7 @@ import {
   PlusOutlined, SwapRightOutlined,
 } from '@ant-design/icons'
 import { message, Modal, Skeleton } from 'antd'
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
 import { createScore, deleteScore, getScoreCapabilities, getScores, updateScore, uploadScoreImage } from '../../api/scores'
@@ -68,8 +68,44 @@ function ScoresPage() {
   const [saving, setSaving] = useState(false)
   const [maxImagesPerRecord, setMaxImagesPerRecord] = useState(1)
   const [capabilitiesLoading, setCapabilitiesLoading] = useState(true)
+  const cardStackRef = useRef<HTMLDivElement | null>(null)
+  const stackPan = useRef({ pointerId: -1, startX: 0, startScrollLeft: 0, moved: false })
+  const suppressStackClick = useRef(false)
+  const [stackDragging, setStackDragging] = useState(false)
 
   const reload = useCallback(() => setRevision((value) => value + 1), [])
+
+  const startStackPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button, a, input, textarea, select')) return
+    stackPan.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: event.currentTarget.scrollLeft,
+      moved: false,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const moveStackPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const pan = stackPan.current
+    if (pan.pointerId !== event.pointerId) return
+    const distance = event.clientX - pan.startX
+    if (Math.abs(distance) > 5) {
+      pan.moved = true
+      setStackDragging(true)
+      event.currentTarget.scrollLeft = pan.startScrollLeft - distance
+    }
+  }
+
+  const endStackPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const pan = stackPan.current
+    if (pan.pointerId !== event.pointerId) return
+    suppressStackClick.current = pan.moved
+    stackPan.current.pointerId = -1
+    setStackDragging(false)
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    window.setTimeout(() => { suppressStackClick.current = false }, 0)
+  }
 
   useEffect(() => {
     if (!isAdmin) {
@@ -295,11 +331,22 @@ function ScoresPage() {
             : error ? <div className="score-state"><h3>暂时无法载入比分</h3><p>{error}</p><button onClick={reload}>重试</button></div>
               : !featured ? <div className="score-state"><span className="score-state-mark">○</span><h3>第一场比赛，等你来记录</h3><p>比赛结束后，管理员可以在这里留下比分、逐局得分与现场照片。</p>{isAdmin && <button onClick={() => openEditor()}>记录第一场比赛</button>}</div>
                 : <div className="score-result-area" aria-live="polite">
-                  <div className="score-stack-heading"><span>点击卡片展开详情，再次点击收起</span><span>拖动卡片标题调整顺序 · 横向浏览更多比赛</span></div>
-                  <div className="score-card-stack" aria-label="比赛记录横向列表">
+                  <div className="score-stack-heading"><span>点击卡片展开详情，再次点击收起</span><span>按住卡片内容左右拖动浏览 · 拖动标题调整顺序</span></div>
+                  <div ref={cardStackRef} className={`score-card-stack ${stackDragging ? 'is-dragging' : ''}`} aria-label="比赛记录横向列表，可按住内容左右拖动浏览" tabIndex={0}
+                    onPointerDown={startStackPan} onPointerMove={moveStackPan} onPointerUp={endStackPan} onPointerCancel={endStackPan}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return
+                      event.preventDefault()
+                      cardStackRef.current?.scrollBy({ left: event.key === 'ArrowLeft' ? -280 : 280, behavior: 'smooth' })
+                    }}>
                     {orderedRecords.map((record, index) => <div key={record.id} className={`score-stack-layer ${activeRecordId === record.id ? 'is-active' : ''}`}
-                      style={{ '--stack-depth': orderedRecords.length - index } as React.CSSProperties}
+                      style={{
+                        '--stack-depth': orderedRecords.length - index,
+                        '--stack-offset': `${Math.min(index, 4) * 6}px`,
+                        '--stack-tilt': `${index === 0 ? 0 : index % 2 === 0 ? 0.3 : -0.3}deg`,
+                      } as React.CSSProperties}
                       onClick={(event) => {
+                        if (suppressStackClick.current) return
                         if ((event.target as HTMLElement).closest('button')) return
                         setActiveRecordId(activeRecordId === record.id ? null : record.id)
                       }}
@@ -310,7 +357,8 @@ function ScoresPage() {
                         onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; setDraggedRecordId(record.id) }}
                         onDragEnd={() => setDraggedRecordId(null)}
                         onKeyDown={(event) => { if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) { event.preventDefault(); const next = orderedRecords[index + (event.key === 'ArrowLeft' ? -1 : 1)]; if (next) reorderRecords(record.id, next.id) } }}
-                        title="点击展开；拖动排序；Alt + 左右方向键调整顺序"><HolderOutlined /> <span>{String(index + 1).padStart(2, '0')} · {record.title}</span><span className="score-stack-status">{activeRecordId === record.id ? '收起' : '展开'}</span></button>
+                        aria-label={`${record.title}，点击${activeRecordId === record.id ? '收起' : '展开'}；可拖动排序`}
+                        title="点击展开；拖动排序；Alt + 左右方向键调整顺序"><HolderOutlined /><span className="score-stack-number">NO. {String(index + 1).padStart(2, '0')}</span><span className="score-stack-title">{record.title}</span><span className="score-stack-status">{activeRecordId === record.id ? '收起' : '展开'}</span></button>
                       <ScoreCard record={record} expanded={activeRecordId === record.id} isAdmin={isAdmin} onEdit={openEditor} onDelete={onDelete}
                         analysisOpen={analysisId === record.id} onToggleAnalysis={() => setAnalysisId(analysisId === record.id ? null : record.id)}
                         onImageClick={(image) => { setSelectedPortrait(false); setSelectedImage({ record, image }) }}
