@@ -20,7 +20,8 @@ import { scoreImages } from './scoreImages'
 import { sortScoreRecordsByPlayedAt } from './scoreOrdering'
 import './scores.css'
 
-const emptyPage: ScorePage = { items: [], page: 1, pageSize: 6, total: 0, totalPages: 0 }
+const SCORE_PAGE_SIZE = 30
+const emptyPage: ScorePage = { items: [], page: 1, pageSize: SCORE_PAGE_SIZE, total: 0, totalPages: 0 }
 
 const localDateTime = (value: string) => {
   const date = new Date(value)
@@ -165,7 +166,7 @@ function ScoresPage() {
     let active = true
     setLoading(true)
     setError('')
-    getScores({ page, pageSize: 6 })
+    getScores({ page, pageSize: SCORE_PAGE_SIZE })
       .then((result) => { if (active) setData(result) })
       .catch((reason: Error) => { if (active) setError(reason.message || '比分加载失败') })
       .finally(() => { if (active) setLoading(false) })
@@ -178,7 +179,7 @@ function ScoresPage() {
     setOverviewError('')
     const loadOverview = async () => {
       const [first, gallery] = await Promise.all([
-        getScores({ page: 1, pageSize: 30 }),
+        getScores({ page: 1, pageSize: SCORE_PAGE_SIZE }),
         // 独立图库是增量能力；旧版后端没有该接口时，不能连带阻断原有比赛照片和统计。
         getScoreGallery().catch((): ScoreGalleryEntry[] => []),
       ])
@@ -186,7 +187,7 @@ function ScoresPage() {
       for (let page = 2; page <= first.totalPages; page += 4) {
         if (!active) return
         const batch = await Promise.all(Array.from({ length: Math.min(4, first.totalPages - page + 1) }, (_, index) =>
-          getScores({ page: page + index, pageSize: 30 })))
+          getScores({ page: page + index, pageSize: SCORE_PAGE_SIZE })))
         batch.forEach((result) => records.push(...result.items))
       }
       if (active) {
