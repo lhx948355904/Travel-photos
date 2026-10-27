@@ -31,6 +31,22 @@ export interface ScoreImage {
   imageUrl: string
 }
 
+export interface ScoreGalleryEntry {
+  id: number
+  title: string
+  playedAt: string
+  note: string | null
+  updatedAt: string
+  images: ScoreImage[]
+}
+
+export interface ScoreGalleryInput {
+  title: string
+  playedAt: string
+  note: string
+  imageKeys: string[]
+}
+
 export interface ScorePage {
   items: ScoreRecord[]
   page: number

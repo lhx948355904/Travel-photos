@@ -2,11 +2,14 @@ package com.photomap.controller;
 
 import com.photomap.common.ApiResponse;
 import com.photomap.dto.CosUploadResponse;
+import com.photomap.dto.ScoreGalleryEntryRequest;
+import com.photomap.dto.ScoreGalleryEntryVO;
 import com.photomap.dto.ScoreRecordRequest;
 import com.photomap.dto.ScoreRecordVO;
 import com.photomap.service.CosStsService;
 import com.photomap.service.JwtService.JwtPrincipal;
 import com.photomap.service.ScoreRecordService;
+import com.photomap.service.ScoreGalleryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class ScoreRecordAdminController {
     private final ScoreRecordService service;
+    private final ScoreGalleryService galleryService;
     private final CosStsService cosStsService;
 
     @PostMapping
@@ -42,6 +46,20 @@ public class ScoreRecordAdminController {
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id, @AuthenticationPrincipal JwtPrincipal principal) {
         service.delete(id, principal.userId());
+        return ApiResponse.success();
+    }
+
+    @PostMapping("/gallery")
+    public ApiResponse<ScoreGalleryEntryVO> createGalleryEntry(
+            @Valid @RequestBody ScoreGalleryEntryRequest request,
+            @AuthenticationPrincipal JwtPrincipal principal) {
+        return ApiResponse.success(galleryService.create(request, principal.userId()));
+    }
+
+    @DeleteMapping("/gallery/{id}")
+    public ApiResponse<Void> deleteGalleryEntry(@PathVariable Long id,
+                                                 @AuthenticationPrincipal JwtPrincipal principal) {
+        galleryService.delete(id, principal.userId());
         return ApiResponse.success();
     }
 

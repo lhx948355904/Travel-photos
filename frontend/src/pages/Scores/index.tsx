@@ -6,14 +6,18 @@ import { message, Modal, Skeleton } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
-import { createScore, deleteScore, getScoreCapabilities, getScores, updateScore, uploadScoreImage } from '../../api/scores'
+import {
+  createScore, createScoreGalleryEntry, deleteScore, deleteScoreGalleryEntry,
+  getScoreCapabilities, getScoreGallery, getScores, updateScore, uploadScoreImage,
+} from '../../api/scores'
 import { useAuthStore } from '../../store/useAuthStore'
-import type { ScoreImage, ScoreInput, ScorePage, ScoreRecord } from '../../types/scores'
+import type { ScoreGalleryEntry, ScoreGalleryInput, ScoreImage, ScoreInput, ScorePage, ScoreRecord } from '../../types/scores'
 import PosterCarousel from './PosterCarousel'
 import ScoreCharts from './ScoreCharts'
 import ScoreOverview from './ScoreOverview'
 import { frameWins } from './chartData'
 import { scoreImages } from './scoreImages'
+import { sortScoreRecordsByPlayedAt } from './scoreOrdering'
 import './scores.css'
 
 const emptyPage: ScorePage = { items: [], page: 1, pageSize: 6, total: 0, totalPages: 0 }
@@ -29,6 +33,13 @@ const freshInput = (): ScoreInput => ({
   playedAt: localDateTime(new Date().toISOString()), venue: '', note: '', imageKey: null, imageKeys: [], frames: [],
 })
 
+const freshGalleryInput = (): ScoreGalleryInput => ({
+  title: '未记录比分的比赛',
+  playedAt: localDateTime(new Date().toISOString()),
+  note: '',
+  imageKeys: [],
+})
+
 const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
 }).format(new Date(value))
@@ -38,6 +49,33 @@ const resultText = (record: ScoreRecord) => {
   return `${record.scoreOne > record.scoreTwo ? record.playerOne : record.playerTwo} 获胜`
 }
 
+type GalleryDisplayItem = {
+  key: string
+  source: 'record' | 'standalone'
+  record: ScoreRecord | null
+  entry: ScoreGalleryEntry | null
+  image: ScoreImage
+  title: string
+  playedAt: string
+  note: string | null
+  seed: number
+}
+
+const imageSeed = (imageKey: string) =>
+  [...imageKey].reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 7)
+
+const recordGalleryItem = (record: ScoreRecord, image: ScoreImage): GalleryDisplayItem => ({
+  key: `record-${record.id}-${image.imageKey}`,
+  source: 'record',
+  record,
+  entry: null,
+  image,
+  title: record.title,
+  playedAt: record.playedAt,
+  note: record.note,
+  seed: imageSeed(image.imageKey),
+})
+
 function ScoresPage() {
   const isAdmin = useAuthStore((state) => state.isAdmin)
   const [data, setData] = useState<ScorePage>(emptyPage)
@@ -46,26 +84,28 @@ function ScoresPage() {
   const [error, setError] = useState('')
   const [revision, setRevision] = useState(0)
   const [allRecords, setAllRecords] = useState<ScoreRecord[]>([])
+  const [standaloneGallery, setStandaloneGallery] = useState<ScoreGalleryEntry[]>([])
   const [overviewLoading, setOverviewLoading] = useState(true)
   const [overviewError, setOverviewError] = useState('')
   const [editing, setEditing] = useState<ScoreRecord | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const [form, setForm] = useState<ScoreInput>(freshInput)
   const [editorImages, setEditorImages] = useState<ScoreImage[]>([])
+  const [galleryEditorOpen, setGalleryEditorOpen] = useState(false)
+  const [galleryForm, setGalleryForm] = useState<ScoreGalleryInput>(freshGalleryInput)
+  const [galleryEditorImages, setGalleryEditorImages] = useState<ScoreImage[]>([])
   const [imageUploadingCount, setImageUploadingCount] = useState(0)
   const [imageUploadingTotal, setImageUploadingTotal] = useState(0)
-  const [selectedImage, setSelectedImage] = useState<{ record: ScoreRecord; image: ScoreImage } | null>(null)
+  const [selectedImage, setSelectedImage] = useState<GalleryDisplayItem | null>(null)
   const [selectedPortrait, setSelectedPortrait] = useState(false)
-  const [order, setOrder] = useState<number[]>(() => {
-    try { return JSON.parse(localStorage.getItem('score-record-order') || '[]') as number[] }
-    catch { return [] }
-  })
+  const [order, setOrder] = useState<number[]>([])
   const [activeRecordId, setActiveRecordId] = useState<number | null>(null)
   const [draggedRecordId, setDraggedRecordId] = useState<number | null>(null)
   const [analysisId, setAnalysisId] = useState<number | null>(null)
   const [galleryRecordId, setGalleryRecordId] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [gallerySaving, setGallerySaving] = useState(false)
   const [maxImagesPerRecord, setMaxImagesPerRecord] = useState(1)
   const [capabilitiesLoading, setCapabilitiesLoading] = useState(true)
   const cardStackRef = useRef<HTMLDivElement | null>(null)
@@ -137,7 +177,11 @@ function ScoresPage() {
     setOverviewLoading(true)
     setOverviewError('')
     const loadOverview = async () => {
-      const first = await getScores({ page: 1, pageSize: 30 })
+      const [first, gallery] = await Promise.all([
+        getScores({ page: 1, pageSize: 30 }),
+        // 独立图库是增量能力；旧版后端没有该接口时，不能连带阻断原有比赛照片和统计。
+        getScoreGallery().catch((): ScoreGalleryEntry[] => []),
+      ])
       const records = [...first.items]
       for (let page = 2; page <= first.totalPages; page += 4) {
         if (!active) return
@@ -145,7 +189,10 @@ function ScoresPage() {
           getScores({ page: page + index, pageSize: 30 })))
         batch.forEach((result) => records.push(...result.items))
       }
-      if (active) setAllRecords(records)
+      if (active) {
+        setAllRecords(records)
+        setStandaloneGallery(gallery)
+      }
     }
     void loadOverview()
       .catch((reason: Error) => { if (active) setOverviewError(reason.message || '统计加载失败') })
@@ -206,6 +253,102 @@ function ScoresPage() {
       setImageUploadingCount(0)
       setImageUploadingTotal(0)
     }
+  }
+
+  const openGalleryEditor = () => {
+    setGalleryForm(freshGalleryInput())
+    setGalleryEditorImages([])
+    setGalleryEditorOpen(true)
+  }
+
+  const onGalleryUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    event.target.value = ''
+    if (!files.length) return
+    if (capabilitiesLoading) {
+      message.error('正在确认服务器的图片保存能力，请稍后重试')
+      return
+    }
+    if ((maxImagesPerRecord === 1 ? files.length : galleryEditorImages.length + files.length) > maxImagesPerRecord) {
+      message.error(maxImagesPerRecord === 1 ? '当前服务器只支持一张照片' : `每次最多上传 ${maxImagesPerRecord} 张图片`)
+      return
+    }
+    if (files.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024)) {
+      message.error('请选择 JPG、PNG 或 WebP 图片，每张不超过 10 MB')
+      return
+    }
+    setUploading(true)
+    setImageUploadingTotal(files.length)
+    try {
+      let uploaded = 0
+      for (const file of files) {
+        const result = await uploadScoreImage(file)
+        const image = { imageKey: result.cosKey, imageUrl: result.url }
+        setGalleryEditorImages((current) => maxImagesPerRecord === 1 ? [image] : [...current, image])
+        setGalleryForm((current) => ({
+          ...current,
+          imageKeys: maxImagesPerRecord === 1 ? [result.cosKey] : [...current.imageKeys, result.cosKey],
+        }))
+        uploaded += 1
+        setImageUploadingCount(uploaded)
+      }
+      message.success(`已上传 ${uploaded} 张图片，请保存到图库`)
+    } catch (reason) {
+      message.error((reason as Error).message || '上传失败')
+    } finally {
+      setUploading(false)
+      setImageUploadingCount(0)
+      setImageUploadingTotal(0)
+    }
+  }
+
+  const onSaveGallery = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!galleryForm.title.trim() || !galleryForm.playedAt) {
+      message.error('请填写影像标题和比赛时间')
+      return
+    }
+    if (!galleryForm.imageKeys.length) {
+      message.error('请至少上传一张照片')
+      return
+    }
+    setGallerySaving(true)
+    try {
+      await createScoreGalleryEntry({
+        ...galleryForm,
+        title: galleryForm.title.trim(),
+        note: galleryForm.note.trim(),
+        playedAt: `${galleryForm.playedAt}:00`,
+      })
+      message.success('照片已加入比赛图库')
+      setGalleryEditorOpen(false)
+      setGalleryRecordId(null)
+      reload()
+    } catch (reason) {
+      message.error((reason as Error).message || '保存图库照片失败')
+    } finally {
+      setGallerySaving(false)
+    }
+  }
+
+  const onDeleteGalleryEntry = (entry: ScoreGalleryEntry) => {
+    Modal.confirm({
+      title: '删除这组图库照片？',
+      content: `“${entry.title}”中的 ${entry.images.length} 张照片将不再公开展示。`,
+      okText: '删除照片',
+      cancelText: '保留',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await deleteScoreGalleryEntry(entry.id)
+          setSelectedImage(null)
+          message.success('图库照片已删除')
+          reload()
+        } catch (reason) {
+          message.error((reason as Error).message || '删除图库照片失败')
+        }
+      },
+    })
   }
 
   const onSave = async (event: FormEvent<HTMLFormElement>) => {
@@ -271,7 +414,7 @@ function ScoresPage() {
     })
   }
 
-  const orderedRecords = useMemo(() => [...data.items].sort((first, second) => {
+  const orderedRecords = useMemo(() => sortScoreRecordsByPlayedAt(data.items).sort((first, second) => {
     const firstIndex = order.indexOf(first.id)
     const secondIndex = order.indexOf(second.id)
     if (firstIndex === -1 && secondIndex === -1) return 0
@@ -281,10 +424,23 @@ function ScoresPage() {
   }), [data.items, order])
   const featured = orderedRecords[0]
   const activeRecord = orderedRecords.find((record) => record.id === activeRecordId)
-  const galleryItems = useMemo(() => allRecords.flatMap((record) =>
-    scoreImages(record).map((image) => ({ record, image, seed: [...image.imageKey].reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 7) })))
-    .sort((a, b) => a.seed - b.seed), [allRecords])
-  const visibleGalleryItems = galleryRecordId === null ? galleryItems : galleryItems.filter(({ record }) => record.id === galleryRecordId)
+  const galleryItems = useMemo(() => [
+    ...allRecords.flatMap((record) => scoreImages(record).map((image) => recordGalleryItem(record, image))),
+    ...standaloneGallery.flatMap((entry) => entry.images.map((image): GalleryDisplayItem => ({
+      key: `standalone-${entry.id}-${image.imageKey}`,
+      source: 'standalone',
+      record: null,
+      entry,
+      image,
+      title: entry.title,
+      playedAt: entry.playedAt,
+      note: entry.note,
+      seed: imageSeed(image.imageKey),
+    }))),
+  ].sort((a, b) => a.seed - b.seed), [allRecords, standaloneGallery])
+  const visibleGalleryItems = galleryRecordId === null
+    ? galleryItems
+    : galleryItems.filter(({ record }) => record?.id === galleryRecordId)
   const openGallery = (recordId: number | null = null) => {
     setGalleryRecordId(recordId)
     document.getElementById('score-gallery')?.scrollIntoView({
@@ -299,7 +455,6 @@ function ScoresPage() {
     ids.splice(ids.indexOf(targetId), 0, sourceId)
     const next = [...ids, ...order.filter((id) => !ids.includes(id))]
     setOrder(next)
-    localStorage.setItem('score-record-order', JSON.stringify(next))
   }
   const wins = frameWins(form.frames)
 
@@ -331,7 +486,7 @@ function ScoresPage() {
             : error ? <div className="score-state"><h3>暂时无法载入比分</h3><p>{error}</p><button onClick={reload}>重试</button></div>
               : !featured ? <div className="score-state"><span className="score-state-mark">○</span><h3>第一场比赛，等你来记录</h3><p>比赛结束后，管理员可以在这里留下比分、逐局得分与现场照片。</p>{isAdmin && <button onClick={() => openEditor()}>记录第一场比赛</button>}</div>
                 : <div className="score-result-area" aria-live="polite">
-                  <div className="score-stack-heading"><span>点击卡片展开详情，再次点击收起</span><span>按住卡片内容左右拖动浏览 · 拖动标题调整顺序</span></div>
+                  <div className="score-stack-heading"><span>点击卡片展开详情，再次点击收起</span><span>按住卡片内容左右拖动浏览 · 拖动标题临时调整顺序{order.length > 0 && <button type="button" onClick={() => setOrder([])}>恢复时间倒序</button>}</span></div>
                   <div ref={cardStackRef} className={`score-card-stack ${stackDragging ? 'is-dragging' : ''}`} aria-label="比赛记录横向列表，可按住内容左右拖动浏览" tabIndex={0}
                     onPointerDown={startStackPan} onPointerMove={moveStackPan} onPointerUp={endStackPan} onPointerCancel={endStackPan}
                     onKeyDown={(event) => {
@@ -361,7 +516,7 @@ function ScoresPage() {
                         title="点击展开；拖动排序；Alt + 左右方向键调整顺序"><HolderOutlined /><span className="score-stack-number">NO. {String(index + 1).padStart(2, '0')}</span><span className="score-stack-title">{record.title}</span><span className="score-stack-status">{activeRecordId === record.id ? '收起' : '展开'}</span></button>
                       <ScoreCard record={record} expanded={activeRecordId === record.id} isAdmin={isAdmin} onEdit={openEditor} onDelete={onDelete}
                         analysisOpen={analysisId === record.id} onToggleAnalysis={() => setAnalysisId(analysisId === record.id ? null : record.id)}
-                        onImageClick={(image) => { setSelectedPortrait(false); setSelectedImage({ record, image }) }}
+                        onImageClick={(image) => { setSelectedPortrait(false); setSelectedImage(recordGalleryItem(record, image)) }}
                         onGalleryClick={() => openGallery(record.id)} />
                     </div>)}
                   </div>
@@ -370,11 +525,11 @@ function ScoresPage() {
                 </div>}
         </section>
         <section className="score-gallery" id="score-gallery" aria-labelledby="score-gallery-heading">
-          <div className="score-gallery-heading"><div><span>Match moments</span><h2 id="score-gallery-heading">比赛图库</h2></div><div className="score-gallery-tools"><p>{galleryRecordId === null ? `全部 ${galleryItems.length} 张现场照片` : `本场 ${visibleGalleryItems.length} 张照片`} · 点击照片查看比赛信息</p>{galleryRecordId !== null && <button type="button" onClick={() => setGalleryRecordId(null)}>查看全部照片</button>}</div></div>
+          <div className="score-gallery-heading"><div><span>Match moments</span><h2 id="score-gallery-heading">比赛图库</h2></div><div className="score-gallery-tools"><p>{galleryRecordId === null ? `全部 ${galleryItems.length} 张现场照片` : `本场 ${visibleGalleryItems.length} 张照片`} · 点击照片查看比赛信息</p>{galleryRecordId !== null && <button type="button" onClick={() => setGalleryRecordId(null)}>查看全部照片</button>}{isAdmin && <button className="score-gallery-add-button" type="button" onClick={openGalleryEditor}><span className="score-gallery-add-icon" aria-hidden="true">+</span>直接添加照片</button>}</div></div>
           {overviewLoading ? <div className="score-gallery-empty"><Skeleton active paragraph={{ rows: 2 }} /></div>
             : overviewError ? <div className="score-gallery-empty"><p>图库暂时无法载入：{overviewError}</p><button type="button" onClick={reload}>重试</button></div>
-              : visibleGalleryItems.length ? <div className="score-gallery-grid">{visibleGalleryItems.map(({ record, image, seed }) => <button className={`score-gallery-tile score-gallery-tile--${seed % 5}`} key={`${record.id}-${image.imageKey}`} onClick={() => { setSelectedPortrait(false); setSelectedImage({ record, image }) }} aria-label={`查看 ${record.title} 的照片`}><img src={image.imageUrl} alt={`${record.title} 的现场照片`} loading="lazy" /><span>{record.title}</span></button>)}</div>
-                : <div className="score-gallery-empty"><CameraOutlined /><p>这里还没有比赛照片。管理员可在“记录新比赛”或编辑已有比赛时上传，保存后照片会出现在这里。</p>{isAdmin && <button type="button" onClick={() => openEditor()}>添加比赛照片</button>}</div>}
+              : visibleGalleryItems.length ? <div className="score-gallery-grid">{visibleGalleryItems.map((item) => <button className={`score-gallery-tile score-gallery-tile--${item.seed % 5}`} key={item.key} onClick={() => { setSelectedPortrait(false); setSelectedImage(item) }} aria-label={`查看 ${item.title} 的照片`}><img src={item.image.imageUrl} alt={`${item.title} 的现场照片`} loading="lazy" /><span>{item.title}</span>{item.source === 'standalone' && <small>仅影像</small>}</button>)}</div>
+                : <div className="score-gallery-empty"><CameraOutlined /><p>这里还没有比赛照片。管理员可以直接添加现场照片，不需要补填已经忘记的比分。</p>{isAdmin && <button type="button" onClick={openGalleryEditor}><span className="score-gallery-add-icon" aria-hidden="true">+</span>直接添加照片</button>}</div>}
         </section>
         {featured && <div className="score-overview-wrap">
           {overviewLoading ? <div className="score-overview-loading"><Skeleton active paragraph={{ rows: 3 }} /></div>
@@ -385,7 +540,18 @@ function ScoresPage() {
       </div>
 
       <Modal className={`score-photo-modal ${selectedPortrait ? 'is-portrait' : 'is-landscape'}`} open={selectedImage !== null} onCancel={() => setSelectedImage(null)} footer={null} destroyOnHidden width={1050} centered>
-        {selectedImage && <div className="score-photo-detail"><div className="score-photo-stage"><img src={selectedImage.image.imageUrl} alt={`${selectedImage.record.title} 的现场照片`} onLoad={(event) => setSelectedPortrait(event.currentTarget.naturalHeight > event.currentTarget.naturalWidth)} /></div><div className="score-photo-information"><span>{formatDate(selectedImage.record.playedAt)}</span><h2>{selectedImage.record.title}</h2><p className="score-photo-result">{selectedImage.record.playerOne} <strong>{selectedImage.record.scoreOne} : {selectedImage.record.scoreTwo}</strong> {selectedImage.record.playerTwo}</p><p>{resultText(selectedImage.record)}</p>{selectedImage.record.venue && <p>场地 · {selectedImage.record.venue}</p>}{selectedImage.record.note && <p>{selectedImage.record.note}</p>}</div></div>}
+        {selectedImage && <div className="score-photo-detail"><div className="score-photo-stage"><img src={selectedImage.image.imageUrl} alt={`${selectedImage.title} 的现场照片`} onLoad={(event) => setSelectedPortrait(event.currentTarget.naturalHeight > event.currentTarget.naturalWidth)} /></div><div className="score-photo-information"><span>{formatDate(selectedImage.playedAt)}</span><h2>{selectedImage.title}</h2>{selectedImage.record ? <><p className="score-photo-result">{selectedImage.record.playerOne} <strong>{selectedImage.record.scoreOne} : {selectedImage.record.scoreTwo}</strong> {selectedImage.record.playerTwo}</p><p>{resultText(selectedImage.record)}</p>{selectedImage.record.venue && <p>场地 · {selectedImage.record.venue}</p>}</> : <p className="score-photo-unscored">仅保存现场影像，未记录本场比分。</p>}{selectedImage.note && <p>{selectedImage.note}</p>}{isAdmin && selectedImage.entry && <div className="score-photo-admin-actions"><button type="button" onClick={() => onDeleteGalleryEntry(selectedImage.entry!)}><DeleteOutlined /> 删除这组照片</button></div>}</div></div>}
+      </Modal>
+
+      <Modal className="score-editor-modal score-gallery-editor-modal" open={galleryEditorOpen} onCancel={() => !gallerySaving && !uploading && setGalleryEditorOpen(false)} destroyOnHidden width={600} title="直接添加图库照片"
+        footer={<div className="score-editor-actions"><button type="button" onClick={() => setGalleryEditorOpen(false)} disabled={gallerySaving || uploading}>取消</button><button type="submit" form="score-gallery-editor-form" disabled={gallerySaving || uploading || capabilitiesLoading || !galleryForm.imageKeys.length}>{gallerySaving ? '正在保存…' : '保存到图库'}</button></div>}>
+        <form id="score-gallery-editor-form" className="score-editor" onSubmit={onSaveGallery}>
+          <p>适合只留下了现场照片、没有记住比分的比赛。这里的照片不会进入胜率和对阵统计。</p>
+          <label>影像标题<input required maxLength={100} value={galleryForm.title} onChange={(event) => setGalleryForm((current) => ({ ...current, title: event.target.value }))} placeholder="例如：周末练球随拍" /></label>
+          <label>比赛时间<input type="datetime-local" required value={galleryForm.playedAt} onChange={(event) => setGalleryForm((current) => ({ ...current, playedAt: event.target.value }))} /></label>
+          <label>备注 <small>可选</small><textarea rows={3} maxLength={300} value={galleryForm.note} onChange={(event) => setGalleryForm((current) => ({ ...current, note: event.target.value }))} placeholder="记得的场地、对手或当天故事" /></label>
+          <div className="score-image-field"><span>现场照片 <small>必填，最多 {maxImagesPerRecord} 张；JPG / PNG / WebP，每张不超过 10 MB</small></span><label className="score-upload-button"><CameraOutlined />{uploading ? `正在上传 ${Math.min(imageUploadingCount + 1, imageUploadingTotal)} / ${imageUploadingTotal}…` : galleryEditorImages.length ? '继续添加' : '选择照片'}<input type="file" multiple={maxImagesPerRecord > 1} accept="image/jpeg,image/png,image/webp" disabled={capabilitiesLoading || uploading || gallerySaving || galleryEditorImages.length >= maxImagesPerRecord} onChange={(event) => void onGalleryUpload(event)} /></label>{galleryEditorImages.length > 0 && <div className="score-image-preview">{galleryEditorImages.map((image, index) => <div key={image.imageKey}><img src={image.imageUrl} alt={`图库照片 ${index + 1}`} /><button type="button" onClick={() => { setGalleryEditorImages((current) => current.filter((item) => item.imageKey !== image.imageKey)); setGalleryForm((current) => ({ ...current, imageKeys: current.imageKeys.filter((key) => key !== image.imageKey) })) }} aria-label={`移除图片 ${index + 1}`}><DeleteOutlined /></button></div>)}</div>}</div>
+        </form>
       </Modal>
 
       <Modal className="score-editor-modal" open={editorOpen} onCancel={() => !saving && !uploading && setEditorOpen(false)} destroyOnHidden width={600} title={editing ? '编辑比赛记录' : '记录一场比赛'}

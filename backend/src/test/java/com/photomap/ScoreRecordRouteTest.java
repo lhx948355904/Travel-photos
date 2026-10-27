@@ -55,6 +55,9 @@ class ScoreRecordRouteTest {
         mockMvc.perform(get("/api/scores/capabilities"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.maxImagesPerRecord").value(20));
+        mockMvc.perform(get("/api/scores/gallery"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
         mockMvc.perform(post("/api/admin/scores").contentType(MediaType.APPLICATION_JSON)
                         .content(input("公开赛", 5, 3)))
                 .andExpect(status().isUnauthorized());
@@ -64,6 +67,9 @@ class ScoreRecordRouteTest {
         mockMvc.perform(delete("/api/admin/scores/1"))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/admin/scores/image"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/admin/scores/gallery").contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -182,6 +188,49 @@ class ScoreRecordRouteTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.images.length()").value(1))
                 .andExpect(jsonPath("$.data.images[0].imageKey").value(secondKey));
+    }
+
+    @Test
+    void standaloneGalleryPhotosCanBeCreatedListedAndDeletedWithoutScore() throws Exception {
+        String token = adminToken();
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(4, 3, BufferedImage.TYPE_INT_RGB), "png", bytes);
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        String firstUpload = mockMvc.perform(multipart("/api/admin/scores/image")
+                        .file(new MockMultipartFile("file", "gallery-one.png", "image/png", bytes.toByteArray()))
+                        .header("Authorization", token))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String secondUpload = mockMvc.perform(multipart("/api/admin/scores/image")
+                        .file(new MockMultipartFile("file", "gallery-two.png", "image/png", bytes.toByteArray()))
+                        .header("Authorization", token))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String firstKey = mapper.readTree(firstUpload).path("data").path("cosKey").asText();
+        String secondKey = mapper.readTree(secondUpload).path("data").path("cosKey").asText();
+        String input = """
+                {"title":"忘记比分的练习赛","playedAt":"2026-10-26T20:30:00",
+                 "note":"只留下了现场照片","imageKeys":["%s","%s"]}
+                """.formatted(firstKey, secondKey);
+
+        String created = mockMvc.perform(post("/api/admin/scores/gallery")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(input))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.images.length()").value(2))
+                .andReturn().getResponse().getContentAsString();
+        long id = mapper.readTree(created).path("data").path("id").asLong();
+
+        mockMvc.perform(get("/api/scores/gallery"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].title").value("忘记比分的练习赛"))
+                .andExpect(jsonPath("$.data[0].images[1].imageKey").value(secondKey));
+
+        mockMvc.perform(delete("/api/admin/scores/gallery/{id}", id)
+                        .header("Authorization", token))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/scores/gallery"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
     }
 
     @Test

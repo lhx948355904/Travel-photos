@@ -1,11 +1,14 @@
 import request from './request'
-import type { ScoreInput, ScorePage, ScoreRecord } from '../types/scores'
+import type { ScoreGalleryEntry, ScoreGalleryInput, ScoreInput, ScorePage, ScoreRecord } from '../types/scores'
 
 export const getScores = (params: { page: number; pageSize: number; q?: string; month?: string }) =>
   request.get<never, ScorePage>('/scores', { params })
 
 export const getScoreCapabilities = () =>
   request.get<never, { maxImagesPerRecord: number }>('/scores/capabilities')
+
+export const getScoreGallery = () =>
+  request.get<never, ScoreGalleryEntry[]>('/scores/gallery')
 
 export const createScore = (input: ScoreInput) =>
   request.post<never, ScoreRecord>('/admin/scores', input)
@@ -15,6 +18,12 @@ export const updateScore = (id: number, input: ScoreInput) =>
 
 export const deleteScore = (id: number) =>
   request.delete<never, void>(`/admin/scores/${id}`)
+
+export const createScoreGalleryEntry = (input: ScoreGalleryInput) =>
+  request.post<never, ScoreGalleryEntry>('/admin/scores/gallery', input)
+
+export const deleteScoreGalleryEntry = (id: number) =>
+  request.delete<never, void>(`/admin/scores/gallery/${id}`)
 
 export const uploadScoreImage = (file: File) => {
   const data = new FormData()
